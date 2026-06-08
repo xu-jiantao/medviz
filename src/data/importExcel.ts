@@ -11,6 +11,17 @@ function readFirstSheet(buf: ArrayBuffer): Record<string, unknown>[] {
   return XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: null })
 }
 
+/** 通用：把 CSV/Excel 解析成列名 + 记录数组（用于列线图自动拟合） */
+export async function parseRecords(file: File): Promise<{
+  columns: string[]
+  records: Record<string, unknown>[]
+}> {
+  const buf = await file.arrayBuffer()
+  const records = readFirstSheet(buf)
+  const columns = records.length ? Object.keys(records[0]) : []
+  return { columns, records }
+}
+
 /**
  * 解析趋势图数据表。约定：
  *   第一列 = 横轴（时间点 / 天数），表头任意

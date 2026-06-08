@@ -27,7 +27,17 @@
       "Bash(git commit -q -m ' *)",
       "Bash(gh auth *)",
       "Bash(python3 -c ' *)",
-      "Bash(node -e \"const c=require\\('./src-tauri/tauri.conf.json'\\); console.log\\('productName:', c.productName\\); console.log\\('identifier:', c.identifier\\); console.log\\('targets:', JSON.stringify\\(c.bundle.targets\\)\\);\")"
+      "Bash(node -e \"const c=require\\('./src-tauri/tauri.conf.json'\\); console.log\\('productName:', c.productName\\); console.log\\('identifier:', c.identifier\\); console.log\\('targets:', JSON.stringify\\(c.bundle.targets\\)\\);\")",
+      "Bash(python3 -m venv .venv)",
+      "Bash(.venv/bin/python -m pip install -q --upgrade pip)",
+      "Bash(.venv/bin/pip install *)",
+      "Bash(.venv/bin/python -c \"import fastapi, statsmodels, lifelines, pandas; print\\('imports ok'\\)\")",
+      "Bash(.venv/bin/python demo.py)",
+      "Bash(.venv/bin/python -c \"import scipy, statsmodels; print\\('scipy', scipy.__version__\\); import statsmodels.api as sm; print\\('statsmodels import ok'\\)\")",
+      "Bash(.venv/bin/uvicorn app:app --port 8000)",
+      "Bash(curl -s http://localhost:8000/health)",
+      "Bash(.venv/bin/python -c ' *)",
+      "Bash(pkill -f \"uvicorn app:app\")"
     ]
   }
 }

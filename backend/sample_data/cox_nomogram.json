@@ -1,0 +1,172 @@
+{
+  "title": "术后生存预测（合成数据）",
+  "pointsMax": 100.0,
+  "variables": [
+    {
+      "id": "9bac9a06",
+      "name": "年龄",
+      "type": "continuous",
+      "unit": "岁",
+      "valueAnchors": [
+        {
+          "value": 40.0,
+          "points": 0.0
+        },
+        {
+          "value": 85.0,
+          "points": 45.6
+        }
+      ]
+    },
+    {
+      "id": "0b990dce",
+      "name": "病理分期",
+      "type": "categorical",
+      "levels": [
+        {
+          "label": "IA",
+          "points": 0.0
+        },
+        {
+          "label": "IB",
+          "points": 14.5
+        },
+        {
+          "label": "II",
+          "points": 51.1
+        },
+        {
+          "label": "III",
+          "points": 100.0
+        }
+      ]
+    },
+    {
+      "id": "55a36e85",
+      "name": "脉管癌栓",
+      "type": "categorical",
+      "levels": [
+        {
+          "label": "无",
+          "points": 0.0
+        },
+        {
+          "label": "有",
+          "points": 39.4
+        }
+      ]
+    }
+  ],
+  "outcomes": [
+    {
+      "id": "a1d8c20c",
+      "name": "1年生存率",
+      "color": "#52c41a",
+      "anchors": [
+        {
+          "prob": 0.9141,
+          "totalPoints": 0.0
+        },
+        {
+          "prob": 0.8425,
+          "totalPoints": 30.8
+        },
+        {
+          "prob": 0.7207,
+          "totalPoints": 61.7
+        },
+        {
+          "prob": 0.5354,
+          "totalPoints": 92.5
+        },
+        {
+          "prob": 0.303,
+          "totalPoints": 123.4
+        },
+        {
+          "prob": 0.1025,
+          "totalPoints": 154.2
+        },
+        {
+          "prob": 0.013,
+          "totalPoints": 185.0
+        }
+      ]
+    },
+    {
+      "id": "16763a17",
+      "name": "3年生存率",
+      "color": "#1677ff",
+      "anchors": [
+        {
+          "prob": 0.7455,
+          "totalPoints": 0.0
+        },
+        {
+          "prob": 0.5711,
+          "totalPoints": 30.8
+        },
+        {
+          "prob": 0.3428,
+          "totalPoints": 61.7
+        },
+        {
+          "prob": 0.1298,
+          "totalPoints": 92.5
+        },
+        {
+          "prob": 0.0202,
+          "totalPoints": 123.4
+        },
+        {
+          "prob": 0.0006,
+          "totalPoints": 154.2
+        },
+        {
+          "prob": 0.0,
+          "totalPoints": 185.0
+        }
+      ]
+    },
+    {
+      "id": "c1dcc95b",
+      "name": "5年生存率",
+      "color": "#cf1322",
+      "anchors": [
+        {
+          "prob": 0.6246,
+          "totalPoints": 0.0
+        },
+        {
+          "prob": 0.4075,
+          "totalPoints": 30.8
+        },
+        {
+          "prob": 0.1798,
+          "totalPoints": 61.7
+        },
+        {
+          "prob": 0.0379,
+          "totalPoints": 92.5
+        },
+        {
+          "prob": 0.0019,
+          "totalPoints": 123.4
+        },
+        {
+          "prob": 0.0,
+          "totalPoints": 154.2
+        },
+        {
+          "prob": 0.0,
+          "totalPoints": 185.0
+        }
+      ]
+    }
+  ],
+  "_meta": {
+    "model": "cox",
+    "n": 600,
+    "concordance": 0.6998
+  }
+}

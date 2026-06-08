@@ -3,12 +3,13 @@ import {
   Card, Select, Input, Button, Space, Table, Divider, Typography, InputNumber,
   Row, Col, Statistic, Tag, Collapse, ColorPicker, Segmented, Alert,
 } from 'antd'
-import { DeleteOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons'
+import { DeleteOutlined, PlusOutlined, ReloadOutlined, ExperimentOutlined } from '@ant-design/icons'
 import NomogramChart from '@/charts/Nomogram/NomogramChart'
 import type { NomogramConfig, NomogramVariable } from '@/charts/Nomogram/types'
 import { nomogramSamples } from '@/charts/Nomogram/samples'
 import { variablePoints, totalPoints, outcomeProbability } from '@/charts/Nomogram/calc'
 import { useNomogramStore } from '@/store/nomogramStore'
+import FitModal from './FitModal'
 
 const { Text, Title } = Typography
 const uid = () => Math.random().toString(36).slice(2, 9)
@@ -16,6 +17,7 @@ const uid = () => Math.random().toString(36).slice(2, 9)
 export default function NomogramPage() {
   const { config, selection, setConfig, patch, mutate, setSel, resetSel } = useNomogramStore()
   const [sampleKey, setSampleKey] = useState('非小细胞肺癌术后生存')
+  const [fitOpen, setFitOpen] = useState(false)
 
   const loadSample = (key: string) => {
     setSampleKey(key)
@@ -28,13 +30,24 @@ export default function NomogramPage() {
     <Row gutter={16}>
       <Col flex="auto">
         <div className="medviz-chart-card">
-          <Title level={5} style={{ textAlign: 'center', marginTop: 0 }}>{config.title}</Title>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span />
+            <Title level={5} style={{ textAlign: 'center', margin: 0 }}>{config.title}</Title>
+            <Button icon={<ExperimentOutlined />} onClick={() => setFitOpen(true)}>
+              从数据拟合
+            </Button>
+          </div>
           <NomogramChart config={config} selection={selection} showReading />
         </div>
         <Alert
           style={{ marginTop: 12 }}
           type="info" showIcon
           message="读法：每个变量的取值向上对到「分值」轴 → 各分值相加 = 总分 → 总分向下对到结局轴得到概率。右侧选择各变量即可自动读数。"
+        />
+        <FitModal
+          open={fitOpen}
+          onClose={() => setFitOpen(false)}
+          onFitted={(cfg) => setConfig(cfg)}
         />
       </Col>
 

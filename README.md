@@ -46,6 +46,12 @@ src/
 └─ export/
    ├─ projectIO.ts     项目保存/读取（四图配置合一 JSON）
    └─ exportPdf.ts     当前图表卡片 → PDF（html2canvas + jsPDF）
+
+backend/                Python 列线图自动拟合后端（二期）
+├─ app.py              FastAPI 接口（/fit/logistic、/fit/cox 等）
+├─ nomogram_fit.py     回归系数 → rms 风格列线图配置
+├─ demo.py            合成数据自检 + 生成示例
+└─ requirements.txt
 ```
 
 ## 设计原则
@@ -63,7 +69,8 @@ src/
 | 4 | 列线图 —— 手动建模（自绘SVG、变量/分值/总分→概率、床旁实时读数、模型可编辑；生存/诊断/恶性概率） | ✅ 已完成 |
 | 5 | 顶栏工具栏：PDF 报告导出、项目保存/读取（本地 JSON，四图一起存）、各图 PNG 导出 | ✅ 已完成 |
 | 6 | Tauri 桌面打包（Mac .dmg / Windows .msi）| ⏳ |
-| 7 | 列线图自动拟合（Python 后端 FastAPI + lifelines，从原始病例拟合 Logistic/Cox） | ⏳ 二期 |
+| 6.5 | GitHub Actions CI：推 tag 自动出 Mac + Windows 安装包 | ✅ 已完成 |
+| 7 | 列线图自动拟合（Python FastAPI + statsmodels/lifelines，从原始病例拟合 Logistic/Cox，前端「从数据拟合」一键应用） | ✅ 已完成 |
 
 ## Excel 导入格式（趋势图）
 
