@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create *)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Read(//tmp/**)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(awk '{print $2, $11, $12, $13}')",
+      "Bash(kill 97767 97785 97951 97952 97972)",
+      "Bash(pkill -f \"medviz/node_modules/.bin/vite\")",
+      "Bash(curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs)",
+      "Bash(sh -s -- -y --default-toolchain stable --profile minimal)",
+      "Read(//Users/xjt/.cargo/bin/**)",
+      "Read(//Users/xjt/**)",
+      "Read(//Users/xjt/.rustup/**)",
+      "Bash(awk '{print $5, $9}')",
+      "Bash(awk '{print $1, $2}')",
+      "Bash(open src-tauri/target/release/bundle/macos/MedViz.app)",
+      "Bash(awk '{print \"running PID:\", $2}')",
+      "Bash(awk '{print $5\"\\\\t\"$9}')",
+      "Bash(awk '{print $1\"\\\\t\"$2}')",
+      "Bash(node -p \"require\\('./package.json'\\).name + ' v' + require\\('./package.json'\\).version\")",
+      "Bash(git init *)",
+      "Bash(git add *)"
+    ]
+  }
+}

@@ -1,0 +1,64 @@
+name: 打包发布 (Build & Release)
+
+# 触发方式：
+#   1) 推送 v 开头的 tag（如 v0.1.0）→ 自动打包并创建 Release
+#   2) 在 GitHub 网页 Actions 页手动运行（workflow_dispatch）
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+# 允许工作流创建 Release、上传安装包
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS：一次打出同时支持 Apple 芯片 + Intel 的通用包
+          - platform: macos-latest
+            args: '--target universal-apple-darwin'
+          # Windows：x64 的 .msi / .exe
+          - platform: windows-latest
+            args: ''
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          # macOS 通用包需要这两个目标架构
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: 缓存 Rust 依赖（加速后续打包）
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: 安装前端依赖
+        run: npm ci
+
+      - name: 打包并发布
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'MedViz ${{ github.ref_name }}'
+          releaseBody: '医学数据可视化工具桌面版。Mac 用户下载 .dmg，Windows 用户下载 .msi 或 .exe。'
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
