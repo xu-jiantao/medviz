@@ -23,7 +23,11 @@
       "Bash(awk '{print $1\"\\\\t\"$2}')",
       "Bash(node -p \"require\\('./package.json'\\).name + ' v' + require\\('./package.json'\\).version\")",
       "Bash(git init *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -q -m ' *)",
+      "Bash(gh auth *)",
+      "Bash(python3 -c ' *)",
+      "Bash(node -e \"const c=require\\('./src-tauri/tauri.conf.json'\\); console.log\\('productName:', c.productName\\); console.log\\('identifier:', c.identifier\\); console.log\\('targets:', JSON.stringify\\(c.bundle.targets\\)\\);\")"
     ]
   }
 }
