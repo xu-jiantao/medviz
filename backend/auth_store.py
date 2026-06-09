@@ -49,9 +49,23 @@ def _run(sql: str, params: tuple = (), fetch: str | None = None):
         conn.close()
 
 
+# 内置演示账号，测试时免注册直接用
+DEMO_USER = ("demo", "demo@medviz.app", "demo1234")
+
+
 def init_db() -> None:
     _run("CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, email TEXT, salt TEXT, hash TEXT, created TEXT)")
     _run("CREATE TABLE IF NOT EXISTS projects (username TEXT PRIMARY KEY, data TEXT, updated TEXT)")
+    _ensure_demo()
+
+
+def _ensure_demo() -> None:
+    """幂等地确保演示账号存在。"""
+    if not _run("SELECT 1 FROM users WHERE username=?", (DEMO_USER[0],), fetch="one"):
+        try:
+            create_user(*DEMO_USER)
+        except ValueError:
+            pass  # 并发下已被建好
 
 
 def _hash(password: str, salt: bytes) -> str:
