@@ -71,6 +71,8 @@ backend/                Python 列线图自动拟合后端（二期）
 | 6 | Tauri 桌面打包（Mac .dmg / Windows .msi）| ⏳ |
 | 6.5 | GitHub Actions CI：推 tag 自动出 Mac + Windows 安装包 | ✅ 已完成 |
 | 7 | 列线图自动拟合（Python FastAPI + statsmodels/lifelines，从原始病例拟合 Logistic/Cox，前端「从数据拟合」一键应用） | ✅ 已完成 |
+| 7.1 | 模型评价图：Logistic 的 ROC + 校准曲线、AUC/C-index 指标 | ✅ 已完成 |
+| 7.2 | Python 后端打进桌面应用（Tauri sidecar，PyInstaller 单文件，启动时自动拉起，CI 各平台自建） | ✅ 已完成 |
 
 ## Excel 导入格式（趋势图）
 

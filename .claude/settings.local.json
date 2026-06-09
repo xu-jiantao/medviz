@@ -37,7 +37,14 @@
       "Bash(.venv/bin/uvicorn app:app --port 8000)",
       "Bash(curl -s http://localhost:8000/health)",
       "Bash(.venv/bin/python -c ' *)",
-      "Bash(pkill -f \"uvicorn app:app\")"
+      "Bash(pkill -f \"uvicorn app:app\")",
+      "Bash(.venv/bin/pyinstaller --version)",
+      "Bash(rm -rf build dist *.spec)",
+      "Bash(.venv/bin/pyinstaller --onefile --name medviz-backend --collect-all statsmodels --collect-all lifelines --collect-all scipy --collect-all formulaic --collect-all autograd --collect-submodules uvicorn --hidden-import=app --hidden-import=nomogram_fit server_entry.py)",
+      "Bash(echo \"exit=$? \")",
+      "Bash(awk '{print \"binary:\", $5}')",
+      "Bash(timeout 12 ./dist/medviz-backend)",
+      "Bash(echo \"exit=$?\")"
     ]
   }
 }

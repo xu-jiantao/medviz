@@ -7,14 +7,14 @@ import { UploadOutlined, CheckCircleTwoTone, CloseCircleTwoTone } from '@ant-des
 import type { UploadProps } from 'antd'
 import type { NomogramConfig } from '@/charts/Nomogram/types'
 import { parseRecords } from '@/data/importExcel'
-import { fitLogistic, fitCox, checkBackend, type PredictorSpec } from '@/data/fitClient'
+import { fitLogistic, fitCox, checkBackend, type PredictorSpec, type EvalData, type FitMeta } from '@/data/fitClient'
 
 const { Text } = Typography
 
 interface Props {
   open: boolean
   onClose: () => void
-  onFitted: (config: NomogramConfig, meta?: Record<string, unknown>) => void
+  onFitted: (config: NomogramConfig, meta?: FitMeta, evalData?: EvalData) => void
 }
 
 type PType = 'continuous' | 'categorical'
@@ -80,8 +80,8 @@ export default function FitModal({ open, onClose, onFitted }: Props) {
         const labels = timeLabels.split(',').map((x) => x.trim()).filter(Boolean)
         result = await fitCox(baseUrl, { data: records, duration, event, predictors: specs, times: t, timeLabels: labels, title: '自动拟合·Cox 列线图' })
       }
-      const { _meta, ...config } = result
-      onFitted(config as NomogramConfig, _meta)
+      const { _meta, _eval, ...config } = result
+      onFitted(config as NomogramConfig, _meta, _eval)
       message.success('拟合完成，已应用到列线图')
       onClose()
     } catch (e) {

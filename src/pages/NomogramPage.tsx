@@ -10,6 +10,8 @@ import { nomogramSamples } from '@/charts/Nomogram/samples'
 import { variablePoints, totalPoints, outcomeProbability } from '@/charts/Nomogram/calc'
 import { useNomogramStore } from '@/store/nomogramStore'
 import FitModal from './FitModal'
+import EvalCharts from '@/charts/Nomogram/EvalCharts'
+import type { EvalData, FitMeta } from '@/data/fitClient'
 
 const { Text, Title } = Typography
 const uid = () => Math.random().toString(36).slice(2, 9)
@@ -18,6 +20,8 @@ export default function NomogramPage() {
   const { config, selection, setConfig, patch, mutate, setSel, resetSel } = useNomogramStore()
   const [sampleKey, setSampleKey] = useState('非小细胞肺癌术后生存')
   const [fitOpen, setFitOpen] = useState(false)
+  const [evalData, setEvalData] = useState<EvalData>()
+  const [fitMeta, setFitMeta] = useState<FitMeta>()
 
   const loadSample = (key: string) => {
     setSampleKey(key)
@@ -44,10 +48,35 @@ export default function NomogramPage() {
           type="info" showIcon
           message="读法：每个变量的取值向上对到「分值」轴 → 各分值相加 = 总分 → 总分向下对到结局轴得到概率。右侧选择各变量即可自动读数。"
         />
+        {(evalData || fitMeta) && (
+          <Card
+            size="small"
+            title="模型评价"
+            style={{ marginTop: 16 }}
+            extra={
+              fitMeta && (
+                <Space size={4}>
+                  {fitMeta.model != null && <Tag color="blue">{String(fitMeta.model)}</Tag>}
+                  {fitMeta.n != null && <Tag>n={String(fitMeta.n)}</Tag>}
+                  {fitMeta.auc != null && <Tag color="red">AUC={String(fitMeta.auc)}</Tag>}
+                  {fitMeta.concordance != null && <Tag color="purple">C-index={String(fitMeta.concordance)}</Tag>}
+                  {fitMeta.pseudoR2 != null && <Tag>伪R²={String(fitMeta.pseudoR2)}</Tag>}
+                </Space>
+              )
+            }
+          >
+            <EvalCharts data={evalData} />
+          </Card>
+        )}
+
         <FitModal
           open={fitOpen}
           onClose={() => setFitOpen(false)}
-          onFitted={(cfg) => setConfig(cfg)}
+          onFitted={(cfg, meta, ev) => {
+            setConfig(cfg)
+            setFitMeta(meta)
+            setEvalData(ev)
+          }}
         />
       </Col>
 

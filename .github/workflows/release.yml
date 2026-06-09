@@ -9,7 +9,6 @@ on:
       - 'v*'
   workflow_dispatch:
 
-# 允许工作流创建 Release、上传安装包
 permissions:
   contents: write
 
@@ -19,12 +18,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macOS：一次打出同时支持 Apple 芯片 + Intel 的通用包
+          # macOS：Apple 芯片原生包（含内置 Python 后端）
           - platform: macos-latest
-            args: '--target universal-apple-darwin'
-          # Windows：x64 的 .msi / .exe
+          # Windows：x64 的 .msi / .exe（含内置 Python 后端）
           - platform: windows-latest
-            args: ''
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -37,16 +34,36 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: 安装 Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          # macOS 通用包需要这两个目标架构
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
-      - name: 缓存 Rust 依赖（加速后续打包）
+      - name: 缓存 Rust 依赖
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
+
+      - name: 构建内置 Python 后端 sidecar (PyInstaller)
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt pyinstaller
+          ( cd backend && pyinstaller --onefile --name medviz-backend \
+              --collect-all statsmodels --collect-all lifelines --collect-all scipy \
+              --collect-all formulaic --collect-all autograd --collect-submodules uvicorn \
+              --hidden-import=app --hidden-import=nomogram_fit server_entry.py )
+          TRIPLE=$(rustc -Vv | grep host | cut -d' ' -f2)
+          mkdir -p src-tauri/binaries
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            cp "backend/dist/medviz-backend.exe" "src-tauri/binaries/medviz-backend-$TRIPLE.exe"
+          else
+            cp "backend/dist/medviz-backend" "src-tauri/binaries/medviz-backend-$TRIPLE"
+            chmod +x "src-tauri/binaries/medviz-backend-$TRIPLE"
+          fi
 
       - name: 安装前端依赖
         run: npm ci
@@ -58,7 +75,6 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'MedViz ${{ github.ref_name }}'
-          releaseBody: '医学数据可视化工具桌面版。Mac 用户下载 .dmg，Windows 用户下载 .msi 或 .exe。'
+          releaseBody: '医学数据可视化工具桌面版（已内置统计拟合后端）。Mac 用户下载 .dmg，Windows 用户下载 .msi 或 .exe。'
           releaseDraft: true
           prerelease: false
-          args: ${{ matrix.args }}

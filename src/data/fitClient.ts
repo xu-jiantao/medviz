@@ -9,7 +9,15 @@ export interface PredictorSpec {
   unit?: string
 }
 
-type FitResult = NomogramConfig & { _meta?: Record<string, unknown> }
+export interface EvalData {
+  auc: number
+  roc: { fpr: number; tpr: number }[]
+  calibration: { predicted: number; observed: number; n: number }[]
+}
+
+export type FitMeta = Record<string, unknown>
+
+export type FitResult = NomogramConfig & { _meta?: FitMeta; _eval?: EvalData }
 
 async function postJson(url: string, body: unknown): Promise<FitResult> {
   const res = await fetch(url, {

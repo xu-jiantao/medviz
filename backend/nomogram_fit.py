@@ -27,6 +27,46 @@ def _uid() -> str:
     return uuid.uuid4().hex[:8]
 
 
+def _logistic_eval(y: np.ndarray, p: np.ndarray, n_roc: int = 60, n_bins: int = 10) -> dict:
+    """计算 ROC 曲线、AUC 和校准曲线（分位数分箱）。"""
+    y = np.asarray(y, dtype=float)
+    p = np.asarray(p, dtype=float)
+
+    # --- ROC ---
+    order = np.argsort(-p)
+    ys = y[order]
+    pos = ys.sum()
+    neg = len(ys) - pos
+    tps = np.cumsum(ys)
+    fps = np.cumsum(1 - ys)
+    tpr = tps / (pos if pos > 0 else 1)
+    fpr = fps / (neg if neg > 0 else 1)
+    fpr = np.concatenate([[0.0], fpr])
+    tpr = np.concatenate([[0.0], tpr])
+    auc = float(np.trapz(tpr, fpr))
+    # 下采样到 n_roc 个点，控制传输体积
+    if len(fpr) > n_roc:
+        idx = np.linspace(0, len(fpr) - 1, n_roc).astype(int)
+        fpr, tpr = fpr[idx], tpr[idx]
+    roc = [{"fpr": round(float(f), 4), "tpr": round(float(t), 4)} for f, t in zip(fpr, tpr)]
+
+    # --- 校准曲线（按预测概率分位数分箱）---
+    edges = np.unique(np.quantile(p, np.linspace(0, 1, n_bins + 1)))
+    calibration = []
+    for i in range(len(edges) - 1):
+        lo, hi = edges[i], edges[i + 1]
+        mask = (p >= lo) & (p <= hi) if i == len(edges) - 2 else (p >= lo) & (p < hi)
+        if mask.sum() == 0:
+            continue
+        calibration.append({
+            "predicted": round(float(p[mask].mean()), 4),
+            "observed": round(float(y[mask].mean()), 4),
+            "n": int(mask.sum()),
+        })
+
+    return {"auc": round(auc, 4), "roc": roc, "calibration": calibration}
+
+
 # 预测变量描述：{"name": 列名, "type": "continuous" | "categorical", "label"?: 显示名, "unit"?: 单位}
 Predictor = dict
 
@@ -165,12 +205,18 @@ def fit_logistic_nomogram(
         prob = 1.0 / (1.0 + np.exp(-lp))
         anchors.append({"prob": round(float(prob), 4), "totalPoints": tp})
 
+    eval_data = _logistic_eval(y.to_numpy(), res.predict(Xc).to_numpy())
+
     return {
         "title": title,
         "pointsMax": points_max,
         "variables": variables,
         "outcomes": [{"id": _uid(), "name": outcome_name, "color": "#cf1322", "anchors": anchors}],
-        "_meta": {"model": "logistic", "n": int(len(df)), "auc_pseudo_r2": round(float(res.prsquared), 4)},
+        "_meta": {
+            "model": "logistic", "n": int(len(df)),
+            "pseudoR2": round(float(res.prsquared), 4), "auc": eval_data["auc"],
+        },
+        "_eval": eval_data,
     }
 
 
