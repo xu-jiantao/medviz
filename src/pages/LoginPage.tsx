@@ -1,15 +1,27 @@
 import { useState } from 'react'
-import { Card, Form, Input, Button, Tabs, Typography, App as AntApp } from 'antd'
-import { UserOutlined, LockOutlined, MailOutlined, MedicineBoxOutlined } from '@ant-design/icons'
-import { useAuthStore } from '@/auth/authStore'
+import { Card, Form, Input, Button, Tabs, Typography, Divider, App as AntApp } from 'antd'
+import { UserOutlined, LockOutlined, MailOutlined, MedicineBoxOutlined, ThunderboltOutlined } from '@ant-design/icons'
+import { useAuthStore, DEMO } from '@/auth/authStore'
 
 const { Title, Text } = Typography
 
 export default function LoginPage() {
-  const { login, register } = useAuthStore()
+  const { login, register, demoLogin } = useAuthStore()
   const { message } = AntApp.useApp()
   const [tab, setTab] = useState('login')
   const [loading, setLoading] = useState(false)
+
+  const onDemo = async () => {
+    setLoading(true)
+    try {
+      await demoLogin()
+      message.success('已用演示账号登录')
+    } catch (e) {
+      message.error((e as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const onLogin = async (v: { username: string; password: string }) => {
     setLoading(true)
@@ -101,8 +113,14 @@ export default function LoginPage() {
             },
           ]}
         />
+        <Divider style={{ margin: '8px 0' }} plain>
+          <Text type="secondary" style={{ fontSize: 12 }}>或</Text>
+        </Divider>
+        <Button icon={<ThunderboltOutlined />} block onClick={onDemo} loading={loading}>
+          用演示账号一键登录
+        </Button>
         <Text type="secondary" style={{ fontSize: 12, display: 'block', textAlign: 'center', marginTop: 8 }}>
-          账号与加密密码仅保存在本机（IndexedDB），离线可用
+          演示账号：{DEMO.username} / {DEMO.password}　·　账号仅存本机，离线可用
         </Text>
       </Card>
     </div>

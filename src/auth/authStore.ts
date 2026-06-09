@@ -21,17 +21,30 @@ interface AuthState {
   init: () => Promise<void>
   register: (p: { username: string; email: string; password: string }) => Promise<void>
   login: (p: { username: string; password: string }) => Promise<void>
+  demoLogin: () => Promise<void>
   logout: () => Promise<void>
 }
 
 const userKey = (username: string) => `user:${username.toLowerCase()}`
 const SESSION_KEY = 'session'
 
-export const useAuthStore = create<AuthState>((set) => ({
+// 内置演示账号，测试时免注册直接登录
+export const DEMO = { username: 'demo', email: 'demo@medviz.app', password: 'demo1234' }
+
+/** 确保演示账号存在（幂等，不影响当前会话） */
+async function ensureDemo() {
+  const k = userKey(DEMO.username)
+  if (await idbGet<StoredUser>(k)) return
+  const { hash, salt } = await hashPassword(DEMO.password)
+  await idbSet(k, { username: DEMO.username, email: DEMO.email, salt, hash, createdAt: new Date().toISOString() })
+}
+
+export const useAuthStore = create<AuthState>((set, get) => ({
   currentUser: null,
   ready: false,
 
   init: async () => {
+    await ensureDemo() // 每次启动确保演示账号可用
     const session = await idbGet<{ username: string }>(SESSION_KEY)
     if (session?.username) {
       const u = await idbGet<StoredUser>(userKey(session.username))
@@ -62,6 +75,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (!ok) throw new Error('密码错误')
     await idbSet(SESSION_KEY, { username: u.username })
     set({ currentUser: { username: u.username, email: u.email } })
+  },
+
+  demoLogin: async () => {
+    await ensureDemo()
+    await get().login({ username: DEMO.username, password: DEMO.password })
   },
 
   logout: async () => {

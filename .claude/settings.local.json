@@ -46,7 +46,9 @@
       "Bash(timeout 12 ./dist/medviz-backend)",
       "Bash(echo \"exit=$?\")",
       "Bash(rm -f medviz_users.db)",
-      "Bash(DATABASE_URL=postgresql://u:p@127.0.0.1:5/none .venv/bin/python -c ' *)"
+      "Bash(DATABASE_URL=postgresql://u:p@127.0.0.1:5/none .venv/bin/python -c ' *)",
+      "Bash(time curl -s --max-time 90 https://medviz-backend-ocrp.onrender.com/health)",
+      "Bash(git push *)"
     ]
   }
 }
