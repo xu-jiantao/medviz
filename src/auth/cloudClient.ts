@@ -35,3 +35,6 @@ export const cloudGetProjects = (baseUrl: string, token: string) =>
 
 export const cloudPutProjects = (baseUrl: string, token: string, projects: SavedProject[]) =>
   req<{ ok: boolean; updated: string; count: number }>(`${base(baseUrl)}/cloud/projects`, 'PUT', { projects }, token)
+
+export const cloudChangePassword = (baseUrl: string, token: string, oldPassword: string, newPassword: string) =>
+  req<{ ok: boolean }>(`${base(baseUrl)}/auth/change-password`, 'POST', { oldPassword, newPassword }, token)

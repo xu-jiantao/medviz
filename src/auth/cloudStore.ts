@@ -3,6 +3,10 @@ import { cloudLogin, cloudRegister, type CloudUser } from './cloudClient'
 
 const LS_KEY = 'medviz-cloud'
 
+// 云同步后端默认地址（已部署的 Render 服务）；用户仍可在界面改。
+// 拟合用的 localhost 后端与此独立，互不影响。
+export const DEFAULT_CLOUD_URL = 'https://medviz-backend-ocrp.onrender.com'
+
 interface Persisted {
   backendUrl: string
   token: string | null
@@ -16,7 +20,7 @@ function load(): Persisted {
   } catch {
     /* ignore */
   }
-  return { backendUrl: 'http://localhost:8000', token: null, user: null }
+  return { backendUrl: DEFAULT_CLOUD_URL, token: null, user: null }
 }
 
 function save(p: Persisted) {

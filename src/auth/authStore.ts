@@ -8,7 +8,13 @@ export interface StoredUser {
   salt: string
   hash: string
   createdAt: string
+  // 密保问题（用于忘记密码找回，可选）
+  question?: string
+  answerSalt?: string
+  answerHash?: string
 }
+
+const normAnswer = (a: string) => a.trim().toLowerCase()
 
 export interface CurrentUser {
   username: string
@@ -19,9 +25,12 @@ interface AuthState {
   currentUser: CurrentUser | null
   ready: boolean
   init: () => Promise<void>
-  register: (p: { username: string; email: string; password: string }) => Promise<void>
+  register: (p: { username: string; email: string; password: string; question?: string; answer?: string }) => Promise<void>
   login: (p: { username: string; password: string }) => Promise<void>
   demoLogin: () => Promise<void>
+  changePassword: (p: { oldPassword: string; newPassword: string }) => Promise<void>
+  getSecurityQuestion: (username: string) => Promise<string | null>
+  resetPassword: (p: { username: string; answer: string; newPassword: string }) => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -55,13 +64,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ ready: true })
   },
 
-  register: async ({ username, email, password }) => {
+  register: async ({ username, email, password, question, answer }) => {
     username = username.trim()
     if (!username) throw new Error('请输入用户名')
     const exists = await idbGet<StoredUser>(userKey(username))
     if (exists) throw new Error('该用户名已被注册')
     const { hash, salt } = await hashPassword(password)
     const user: StoredUser = { username, email: email.trim(), salt, hash, createdAt: new Date().toISOString() }
+    if (question && answer) {
+      const a = await hashPassword(normAnswer(answer))
+      user.question = question.trim()
+      user.answerHash = a.hash
+      user.answerSalt = a.salt
+    }
     await idbSet(userKey(username), user)
     await idbSet(SESSION_KEY, { username })
     set({ currentUser: { username, email: user.email } })
@@ -80,6 +95,37 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   demoLogin: async () => {
     await ensureDemo()
     await get().login({ username: DEMO.username, password: DEMO.password })
+  },
+
+  changePassword: async ({ oldPassword, newPassword }) => {
+    const cur = get().currentUser
+    if (!cur) throw new Error('请先登录')
+    const u = await idbGet<StoredUser>(userKey(cur.username))
+    if (!u) throw new Error('账号不存在')
+    if (!(await verifyPassword(oldPassword, u.salt, u.hash))) throw new Error('原密码错误')
+    if (newPassword.length < 6) throw new Error('新密码至少 6 位')
+    const { hash, salt } = await hashPassword(newPassword)
+    await idbSet(userKey(cur.username), { ...u, hash, salt })
+  },
+
+  getSecurityQuestion: async (username) => {
+    const u = await idbGet<StoredUser>(userKey(username.trim()))
+    if (!u) throw new Error('用户名不存在')
+    return u.question ?? null
+  },
+
+  resetPassword: async ({ username, answer, newPassword }) => {
+    username = username.trim()
+    const u = await idbGet<StoredUser>(userKey(username))
+    if (!u) throw new Error('用户名不存在')
+    if (!u.question || !u.answerHash || !u.answerSalt) throw new Error('该账号未设置密保问题，无法找回')
+    if (!(await verifyPassword(normAnswer(answer), u.answerSalt, u.answerHash))) throw new Error('密保答案不正确')
+    if (newPassword.length < 6) throw new Error('新密码至少 6 位')
+    const { hash, salt } = await hashPassword(newPassword)
+    await idbSet(userKey(username), { ...u, hash, salt })
+    // 重置后自动登录
+    await idbSet(SESSION_KEY, { username: u.username })
+    set({ currentUser: { username: u.username, email: u.email } })
   },
 
   logout: async () => {

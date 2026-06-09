@@ -91,6 +91,11 @@ class ProjectsReq(BaseModel):
     projects: list
 
 
+class ChangePwdReq(BaseModel):
+    oldPassword: str
+    newPassword: str
+
+
 def current_user(authorization: str = Header(default="")) -> str:
     """从 Authorization: Bearer <token> 解析出用户名。"""
     token = authorization.removeprefix("Bearer ").strip()
@@ -121,6 +126,15 @@ def auth_login(req: LoginReq):
 @app.get("/auth/me")
 def auth_me(username: str = Depends(current_user)):
     return {"user": auth_store.get_user(username)}
+
+
+@app.post("/auth/change-password")
+def auth_change_password(req: ChangePwdReq, username: str = Depends(current_user)):
+    try:
+        auth_store.change_password(username, req.oldPassword, req.newPassword)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"ok": True}
 
 
 @app.get("/cloud/projects")

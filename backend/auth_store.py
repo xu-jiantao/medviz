@@ -98,6 +98,18 @@ def get_user(username: str) -> dict | None:
     return {"username": row[0], "email": row[1]} if row else None
 
 
+def change_password(username: str, old_password: str, new_password: str) -> None:
+    row = _run("SELECT salt,hash FROM users WHERE username=?", (username,), fetch="one")
+    if not row:
+        raise ValueError("用户不存在")
+    if not hmac.compare_digest(_hash(old_password, bytes.fromhex(row[0])), row[1]):
+        raise ValueError("原密码错误")
+    if len(new_password) < 6:
+        raise ValueError("新密码至少 6 位")
+    salt = secrets.token_bytes(16)
+    _run("UPDATE users SET salt=?, hash=? WHERE username=?", (salt.hex(), _hash(new_password, salt), username))
+
+
 # ---------------- token ----------------
 def make_token(username: str) -> str:
     exp = int(time.time()) + TOKEN_TTL

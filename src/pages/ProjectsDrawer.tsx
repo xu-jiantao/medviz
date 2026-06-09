@@ -12,7 +12,7 @@ import {
   replaceProjects, type SavedProject,
 } from '@/auth/projects'
 import { useCloudStore } from '@/auth/cloudStore'
-import { cloudGetProjects, cloudPutProjects } from '@/auth/cloudClient'
+import { cloudGetProjects, cloudPutProjects, cloudChangePassword } from '@/auth/cloudClient'
 
 const { Text } = Typography
 
@@ -103,6 +103,23 @@ function CloudSync({ localUsername, onAfterPull }: { localUsername: string; onAf
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
+  const [showChangePwd, setShowChangePwd] = useState(false)
+  const [oldPwd, setOldPwd] = useState('')
+  const [newPwd, setNewPwd] = useState('')
+
+  const doChangePwd = async () => {
+    if (newPwd.length < 6) return message.warning('新密码至少 6 位')
+    setBusy(true)
+    try {
+      await cloudChangePassword(cloud.backendUrl, cloud.token!, oldPwd, newPwd)
+      message.success('云账号密码已修改')
+      setOldPwd(''); setNewPwd(''); setShowChangePwd(false)
+    } catch (e) {
+      message.error((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const doAuth = async () => {
     setBusy(true)
@@ -149,11 +166,21 @@ function CloudSync({ localUsername, onAfterPull }: { localUsername: string; onAf
     return (
       <Space direction="vertical" style={{ width: '100%' }} size={8}>
         <Text><CloudOutlined /> 云账号：<Tag color="blue">{cloud.user.username}</Tag></Text>
-        <Space>
+        <Space wrap>
           <Button icon={<CloudUploadOutlined />} loading={busy} onClick={push}>上传到云</Button>
           <Button icon={<CloudDownloadOutlined />} loading={busy} onClick={pull}>从云恢复</Button>
           <Button icon={<LogoutOutlined />} onClick={cloud.logout}>退出云</Button>
         </Space>
+        <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setShowChangePwd((s) => !s)}>
+          {showChangePwd ? '收起' : '改密码'}
+        </Button>
+        {showChangePwd && (
+          <Space.Compact style={{ width: '100%' }}>
+            <Input.Password size="small" placeholder="原密码" value={oldPwd} onChange={(e) => setOldPwd(e.target.value)} />
+            <Input.Password size="small" placeholder="新密码(≥6位)" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} />
+            <Button size="small" type="primary" loading={busy} onClick={doChangePwd}>保存</Button>
+          </Space.Compact>
+        )}
         <Text type="secondary" style={{ fontSize: 12 }}>上传=本机项目覆盖云端；恢复=云端项目覆盖本机（换设备时用）</Text>
       </Space>
     )

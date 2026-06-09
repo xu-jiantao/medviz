@@ -3,7 +3,7 @@ import { Layout, Menu, Typography, Button, Space, Dropdown, Avatar, Spin, App as
 import {
   LineChartOutlined, RadarChartOutlined, TableOutlined, CalculatorOutlined,
   SaveOutlined, FolderOpenOutlined, FilePdfOutlined, UserOutlined, LogoutOutlined,
-  AppstoreOutlined,
+  AppstoreOutlined, SettingOutlined,
 } from '@ant-design/icons'
 import TrendPage from './pages/TrendPage'
 import RadarPage from './pages/RadarPage'
@@ -11,6 +11,7 @@ import HeatmapPage from './pages/HeatmapPage'
 import NomogramPage from './pages/NomogramPage'
 import LoginPage from './pages/LoginPage'
 import ProjectsDrawer from './pages/ProjectsDrawer'
+import AccountModal from './pages/AccountModal'
 import { saveProjectFile, loadProjectFile } from './export/projectIO'
 import { exportElementToPdf } from './export/exportPdf'
 import { useAuthStore } from './auth/authStore'
@@ -33,6 +34,7 @@ export default function App() {
   const [view, setView] = useState<ViewKey>('trend')
   const [exporting, setExporting] = useState(false)
   const [projectsOpen, setProjectsOpen] = useState(false)
+  const [accountOpen, setAccountOpen] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -105,6 +107,7 @@ export default function App() {
               items: [
                 { key: 'u', label: currentUser.email || currentUser.username, disabled: true },
                 { type: 'divider' },
+                { key: 'account', icon: <SettingOutlined />, label: '账号设置 / 改密码', onClick: () => setAccountOpen(true) },
                 { key: 'logout', icon: <LogoutOutlined />, label: '退出登录', onClick: () => logout() },
               ],
             }}
@@ -135,6 +138,7 @@ export default function App() {
       </Layout>
 
       <ProjectsDrawer open={projectsOpen} onClose={() => setProjectsOpen(false)} username={currentUser.username} />
+      <AccountModal open={accountOpen} onClose={() => setAccountOpen(false)} />
     </Layout>
   )
 }
