@@ -15,6 +15,11 @@ export async function listProjects(username: string): Promise<SavedProject[]> {
   return (await idbGet<SavedProject[]>(key(username))) ?? []
 }
 
+/** 用给定列表整体替换该用户的本地项目（云同步「从云恢复」用） */
+export async function replaceProjects(username: string, list: SavedProject[]): Promise<void> {
+  await idbSet(key(username), list)
+}
+
 /** 把当前四图配置存为该用户的一个命名项目 */
 export async function saveCurrentProject(username: string, name: string): Promise<SavedProject> {
   const list = await listProjects(username)

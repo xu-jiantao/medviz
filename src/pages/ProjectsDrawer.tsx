@@ -1,12 +1,18 @@
 import { useEffect, useState } from 'react'
 import {
   Drawer, List, Button, Input, Space, Popconfirm, Typography, Empty, App as AntApp,
+  Divider, Tag, Segmented,
 } from 'antd'
-import { SaveOutlined, FolderOpenOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons'
+import {
+  SaveOutlined, FolderOpenOutlined, DeleteOutlined, ReloadOutlined,
+  CloudUploadOutlined, CloudDownloadOutlined, CloudOutlined, LogoutOutlined,
+} from '@ant-design/icons'
 import {
   listProjects, saveCurrentProject, loadProject, deleteProject, overwriteProject,
-  type SavedProject,
+  replaceProjects, type SavedProject,
 } from '@/auth/projects'
+import { useCloudStore } from '@/auth/cloudStore'
+import { cloudGetProjects, cloudPutProjects } from '@/auth/cloudClient'
 
 const { Text } = Typography
 
@@ -82,6 +88,95 @@ export default function ProjectsDrawer({ open, onClose, username }: Props) {
           )}
         />
       )}
+
+      <Divider orientation="left" style={{ marginTop: 24 }}>云同步（可选）</Divider>
+      <CloudSync localUsername={username} onAfterPull={refresh} />
     </Drawer>
+  )
+}
+
+function CloudSync({ localUsername, onAfterPull }: { localUsername: string; onAfterPull: () => Promise<void> }) {
+  const { message } = AntApp.useApp()
+  const cloud = useCloudStore()
+  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [username, setUsername] = useState(localUsername)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const doAuth = async () => {
+    setBusy(true)
+    try {
+      if (mode === 'register') await cloud.register({ username, email, password })
+      else await cloud.login({ username, password })
+      message.success('云端已登录')
+      setPassword('')
+    } catch (e) {
+      message.error((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const push = async () => {
+    setBusy(true)
+    try {
+      const list = await listProjects(localUsername)
+      const r = await cloudPutProjects(cloud.backendUrl, cloud.token!, list)
+      message.success(`已上传 ${r.count} 个项目到云端`)
+    } catch (e) {
+      message.error((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const pull = async () => {
+    setBusy(true)
+    try {
+      const { projects } = await cloudGetProjects(cloud.backendUrl, cloud.token!)
+      await replaceProjects(localUsername, projects)
+      await onAfterPull()
+      message.success(`已从云端恢复 ${projects.length} 个项目`)
+    } catch (e) {
+      message.error((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (cloud.token && cloud.user) {
+    return (
+      <Space direction="vertical" style={{ width: '100%' }} size={8}>
+        <Text><CloudOutlined /> 云账号：<Tag color="blue">{cloud.user.username}</Tag></Text>
+        <Space>
+          <Button icon={<CloudUploadOutlined />} loading={busy} onClick={push}>上传到云</Button>
+          <Button icon={<CloudDownloadOutlined />} loading={busy} onClick={pull}>从云恢复</Button>
+          <Button icon={<LogoutOutlined />} onClick={cloud.logout}>退出云</Button>
+        </Space>
+        <Text type="secondary" style={{ fontSize: 12 }}>上传=本机项目覆盖云端；恢复=云端项目覆盖本机（换设备时用）</Text>
+      </Space>
+    )
+  }
+
+  return (
+    <Space direction="vertical" style={{ width: '100%' }} size={8}>
+      <Text type="secondary" style={{ fontSize: 12 }}>
+        登录云账号后可把项目备份到服务器、在其它设备恢复。需后端在线。
+      </Text>
+      <Input size="small" placeholder="后端地址" value={cloud.backendUrl} onChange={(e) => cloud.setBackendUrl(e.target.value)} />
+      <Segmented
+        size="small" value={mode} onChange={(v) => setMode(v as 'login' | 'register')}
+        options={[{ label: '登录', value: 'login' }, { label: '注册', value: 'register' }]}
+      />
+      <Input size="small" placeholder="云账号用户名" value={username} onChange={(e) => setUsername(e.target.value)} />
+      {mode === 'register' && (
+        <Input size="small" placeholder="邮箱" value={email} onChange={(e) => setEmail(e.target.value)} />
+      )}
+      <Input.Password size="small" placeholder="密码" value={password} onChange={(e) => setPassword(e.target.value)} />
+      <Button type="primary" size="small" block loading={busy} onClick={doAuth}>
+        {mode === 'register' ? '注册并登录云端' : '登录云端'}
+      </Button>
+    </Space>
   )
 }

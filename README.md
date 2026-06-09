@@ -73,6 +73,7 @@ backend/                Python 列线图自动拟合后端（二期）
 | 7 | 列线图自动拟合（Python FastAPI + statsmodels/lifelines，从原始病例拟合 Logistic/Cox，前端「从数据拟合」一键应用） | ✅ 已完成 |
 | 7.1 | 模型评价图：Logistic 的 ROC + 校准曲线、AUC/C-index 指标 | ✅ 已完成 |
 | 7.2 | Python 后端打进桌面应用（Tauri sidecar，PyInstaller 单文件，启动时自动拉起，CI 各平台自建） | ✅ 已完成 |
+| 8 | 注册登录 + 应用门禁 + 按用户存项目（本地优先：PBKDF2+IndexedDB；可选云同步：后端 SQLite 账号 + 项目备份/恢复） | ✅ 已完成 |
 
 ## Excel 导入格式（趋势图）
 

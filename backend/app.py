@@ -15,10 +15,11 @@ from __future__ import annotations
 import io
 
 import pandas as pd
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+import auth_store
 from nomogram_fit import fit_cox_nomogram, fit_logistic_nomogram
 
 app = FastAPI(title="MedViz Nomogram Fitter", version="0.1.0")
@@ -66,6 +67,65 @@ def _predictors_to_dicts(ps: list[PredictorIn]) -> list[dict]:
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+# ---------------- 账号与云同步 ----------------
+class RegisterReq(BaseModel):
+    username: str
+    email: str = ""
+    password: str
+
+
+class LoginReq(BaseModel):
+    username: str
+    password: str
+
+
+class ProjectsReq(BaseModel):
+    projects: list
+
+
+def current_user(authorization: str = Header(default="")) -> str:
+    """从 Authorization: Bearer <token> 解析出用户名。"""
+    token = authorization.removeprefix("Bearer ").strip()
+    username = auth_store.verify_token(token)
+    if not username:
+        raise HTTPException(401, "未登录或登录已过期")
+    return username
+
+
+@app.post("/auth/register")
+def auth_register(req: RegisterReq):
+    try:
+        auth_store.create_user(req.username, req.email, req.password)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"token": auth_store.make_token(req.username), "user": auth_store.get_user(req.username)}
+
+
+@app.post("/auth/login")
+def auth_login(req: LoginReq):
+    try:
+        user = auth_store.verify_user(req.username, req.password)
+    except ValueError as e:
+        raise HTTPException(401, str(e))
+    return {"token": auth_store.make_token(user["username"]), "user": user}
+
+
+@app.get("/auth/me")
+def auth_me(username: str = Depends(current_user)):
+    return {"user": auth_store.get_user(username)}
+
+
+@app.get("/cloud/projects")
+def cloud_get(username: str = Depends(current_user)):
+    return {"projects": auth_store.get_projects(username)}
+
+
+@app.put("/cloud/projects")
+def cloud_put(req: ProjectsReq, username: str = Depends(current_user)):
+    updated = auth_store.set_projects(username, req.projects)
+    return {"ok": True, "updated": updated, "count": len(req.projects)}
 
 
 @app.post("/fit/logistic")
