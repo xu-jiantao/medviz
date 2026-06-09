@@ -44,7 +44,9 @@
       "Bash(echo \"exit=$? \")",
       "Bash(awk '{print \"binary:\", $5}')",
       "Bash(timeout 12 ./dist/medviz-backend)",
-      "Bash(echo \"exit=$?\")"
+      "Bash(echo \"exit=$?\")",
+      "Bash(rm -f medviz_users.db)",
+      "Bash(DATABASE_URL=postgresql://u:p@127.0.0.1:5/none .venv/bin/python -c ' *)"
     ]
   }
 }

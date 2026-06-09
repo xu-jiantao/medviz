@@ -1,0 +1,19 @@
+# Render 蓝图：一键部署 MedViz 云同步后端（账号 + 项目备份）
+# 用法见 backend/DEPLOY.md。数据库用 Neon 免费 Postgres，在 Render 面板填 DATABASE_URL。
+services:
+  - type: web
+    name: medviz-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements-cloud.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      # Neon 的连接串，在 Render 面板手动填（不要写进仓库）
+      - key: DATABASE_URL
+        sync: false
+      # token 签名密钥，Render 自动生成一个随机值
+      - key: MEDVIZ_SECRET
+        generateValue: true

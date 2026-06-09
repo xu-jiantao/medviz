@@ -1,0 +1,7 @@
+# 云端（Render）部署用的精简依赖：只装「账号 + 项目同步」需要的库。
+# 不含 pandas/scipy/statsmodels/lifelines —— 列线图拟合走桌面内置后端，
+# 这样云端轻量、稳稳塞进免费机 512MB。
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+psycopg[binary]==3.2.3

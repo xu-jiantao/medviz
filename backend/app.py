@@ -14,15 +14,21 @@ from __future__ import annotations
 
 import io
 
-import pandas as pd
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+# pandas / statsmodels / lifelines 仅在「拟合」接口里用，延迟导入，
+# 这样云端只部署「账号+同步」时无需安装这些笨重的库。
+
 import auth_store
-from nomogram_fit import fit_cox_nomogram, fit_logistic_nomogram
 
 app = FastAPI(title="MedViz Nomogram Fitter", version="0.1.0")
+
+
+@app.on_event("startup")
+def _startup():
+    auth_store.init_db()
 
 # 开发期允许本地前端跨域访问
 app.add_middleware(
@@ -130,6 +136,9 @@ def cloud_put(req: ProjectsReq, username: str = Depends(current_user)):
 
 @app.post("/fit/logistic")
 def fit_logistic(req: LogisticRequest):
+    import pandas as pd
+    from nomogram_fit import fit_logistic_nomogram
+
     df = pd.DataFrame(req.data)
     if req.outcome not in df.columns:
         raise HTTPException(400, f"结局列 '{req.outcome}' 不在数据中")
@@ -144,6 +153,9 @@ def fit_logistic(req: LogisticRequest):
 
 @app.post("/fit/cox")
 def fit_cox(req: CoxRequest):
+    import pandas as pd
+    from nomogram_fit import fit_cox_nomogram
+
     df = pd.DataFrame(req.data)
     for col in (req.duration, req.event):
         if col not in df.columns:
@@ -158,7 +170,9 @@ def fit_cox(req: CoxRequest):
         raise HTTPException(400, f"拟合失败：{e}")
 
 
-def _read_upload(file: UploadFile) -> pd.DataFrame:
+def _read_upload(file: UploadFile):
+    import pandas as pd
+
     raw = file.file.read()
     name = (file.filename or "").lower()
     if name.endswith(".csv"):
@@ -187,6 +201,9 @@ async def fit_logistic_upload(
     outcomeName: str = Form("结局概率"),
 ):
     import json
+
+    from nomogram_fit import fit_logistic_nomogram
+
     df = _read_upload(file)
     ps = json.loads(predictors)
     return fit_logistic_nomogram(df, outcome, ps, title=title, points_max=pointsMax, outcome_name=outcomeName)
