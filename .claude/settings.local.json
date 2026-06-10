@@ -49,7 +49,11 @@
       "Bash(DATABASE_URL=postgresql://u:p@127.0.0.1:5/none .venv/bin/python -c ' *)",
       "Bash(time curl -s --max-time 90 https://medviz-backend-ocrp.onrender.com/health)",
       "Bash(git push *)",
-      "Bash(git tag *)"
+      "Bash(git tag *)",
+      "Bash(curl -s \"https://api.github.com/repos/xu-jiantao/medviz/actions/runs?per_page=2\")",
+      "Bash(node -e ' *)",
+      "Bash(curl -s \"https://api.github.com/repos/xu-jiantao/medviz/actions/runs?per_page=3\")",
+      "Bash(curl -s \"https://api.github.com/repos/xu-jiantao/medviz/releases/tags/v0.4.0\")"
     ]
   }
 }

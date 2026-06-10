@@ -64,6 +64,10 @@ jobs:
             cp "backend/dist/medviz-backend" "src-tauri/binaries/medviz-backend-$TRIPLE"
             chmod +x "src-tauri/binaries/medviz-backend-$TRIPLE"
           fi
+          # macOS：给 sidecar ad-hoc 签名，避免破坏 .app 包的签名封印（否则下载后报“已损坏”）
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            codesign --force -s - "src-tauri/binaries/medviz-backend-$TRIPLE"
+          fi
 
       - name: 安装前端依赖
         run: npm ci
