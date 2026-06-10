@@ -32,6 +32,8 @@ python demo.py
 
 ## 接口
 
+**拟合**
+
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | GET | `/health` | 健康检查 |
@@ -39,6 +41,17 @@ python demo.py
 | POST | `/fit/cox` | Cox 拟合（按时间点各出一条生存率轴）|
 | POST | `/parse` | 上传 CSV/Excel，返回列名和预览 |
 | POST | `/fit/logistic/upload` | 直接上传文件 + 表单字段拟合 |
+
+**账号 / 云同步**（token 经 `Authorization: Bearer <token>` 传递）
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/auth/register` | 注册，返回 `{token, user}` |
+| POST | `/auth/login` | 登录，返回 `{token, user}` |
+| GET | `/auth/me` | 当前用户（需 token） |
+| POST | `/auth/change-password` | 改密码（需 token + 原密码） |
+| GET | `/cloud/projects` | 取该用户云端项目（需 token） |
+| PUT | `/cloud/projects` | 覆盖上传该用户云端项目（需 token） |
 
 ### `/fit/logistic` 请求体
 
@@ -69,8 +82,10 @@ python demo.py
 }
 ```
 
-返回值结构与前端 `src/charts/Nomogram/types.ts` 的 `NomogramConfig` 完全一致
-（外加一个 `_meta` 字段，含模型类型、样本量、伪 R² / C-index），前端直接 `setConfig` 即可应用。
+返回值结构与前端 `src/charts/Nomogram/types.ts` 的 `NomogramConfig` 完全一致，前端直接 `setConfig` 即可应用。
+另带两个附加字段：
+- `_meta`：模型类型、样本量、伪 R²(Logistic) / C-index(Cox)、AUC。
+- `_eval`（仅 Logistic）：`{auc, roc:[{fpr,tpr}], calibration:[{predicted,observed,n}]}`，前端据此画 ROC + 校准曲线。
 
 ## 算法说明
 
