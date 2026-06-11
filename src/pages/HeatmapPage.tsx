@@ -11,6 +11,9 @@ import type { HeatAxisItem } from '@/charts/Heatmap/types'
 import { COLOR_PRESETS } from '@/charts/Heatmap/types'
 import { heatmapSamples } from '@/charts/Heatmap/samples'
 import { useHeatmapStore } from '@/store/heatmapStore'
+import { useNavStore } from '@/store/navStore'
+import { useScenarioSample } from '@/hooks/useScenarioSample'
+import ClinicalCard from '@/components/ClinicalCard'
 import { importHeatmapExcel } from '@/data/importExcel'
 import { downloadHeatmapTemplate } from '@/data/templates'
 
@@ -21,12 +24,10 @@ export default function HeatmapPage() {
   const s = useHeatmapStore()
   const { message } = AntApp.useApp()
   const { config } = s
-  const [sampleKey, setSampleKey] = useState('基因突变(分类色块)')
-
-  const loadSample = (key: string) => {
-    setSampleKey(key)
-    s.setConfig(JSON.parse(JSON.stringify(heatmapSamples[key])))
-  }
+  const sample = useNavStore((st) => st.sample)
+  useScenarioSample('heatmap', (key) => {
+    if (heatmapSamples[key]) s.setConfig(JSON.parse(JSON.stringify(heatmapSamples[key])))
+  })
 
   const uploadProps: UploadProps = {
     accept: '.xlsx,.xls,.csv',
@@ -111,14 +112,8 @@ export default function HeatmapPage() {
       </Col>
 
       <Col flex="320px">
-        <Card size="small" title="配置面板" styles={{ body: { maxHeight: '82vh', overflow: 'auto' } }}>
-          <Text type="secondary">临床示例</Text>
-          <Select
-            style={{ width: '100%', marginTop: 6 }}
-            value={sampleKey}
-            options={Object.keys(heatmapSamples).map((k) => ({ label: k, value: k }))}
-            onChange={loadSample}
-          />
+        <ClinicalCard sample={sample} />
+        <Card size="small" title="参数微调" styles={{ body: { maxHeight: '68vh', overflow: 'auto' } }}>
           <Upload {...uploadProps}>
             <Button icon={<UploadOutlined />} block style={{ marginTop: 10 }}>导入 Excel / CSV</Button>
           </Upload>

@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import {
-  Card, Select, Switch, Input, Button, Space, Table, Upload, App as AntApp, Divider, Typography, InputNumber, Row, Col,
+  Card, Switch, Input, Button, Space, Table, Upload, App as AntApp, Divider, Typography, InputNumber, Row, Col,
 } from 'antd'
 import { DeleteOutlined, PlusOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
 import type { UploadProps } from 'antd'
 import TrendChart from '@/charts/TrendChart/TrendChart'
 import { trendSamples } from '@/charts/TrendChart/samples'
 import { useTrendStore } from '@/store/trendStore'
+import { useNavStore } from '@/store/navStore'
+import { useScenarioSample } from '@/hooks/useScenarioSample'
+import ClinicalCard from '@/components/ClinicalCard'
 import { importTrendExcel } from '@/data/importExcel'
 import { downloadTrendTemplate } from '@/data/templates'
 
@@ -17,12 +20,10 @@ export default function TrendPage() {
   const { message } = AntApp.useApp()
   const { config, setConfig, patch, addReferenceLine, removeReferenceLine, addEventMarker, removeEventMarker } =
     useTrendStore()
-  const [sampleKey, setSampleKey] = useState<string>('高血压3年血压趋势')
-
-  const loadSample = (key: string) => {
-    setSampleKey(key)
-    setConfig(JSON.parse(JSON.stringify(trendSamples[key])))
-  }
+  const sample = useNavStore((s) => s.sample)
+  useScenarioSample('trend', (key) => {
+    if (trendSamples[key]) setConfig(JSON.parse(JSON.stringify(trendSamples[key])))
+  })
 
   const uploadProps: UploadProps = {
     accept: '.xlsx,.xls,.csv',
@@ -48,15 +49,8 @@ export default function TrendPage() {
       </Col>
 
       <Col flex="360px">
-        <Card size="small" title="配置面板" styles={{ body: { maxHeight: '78vh', overflow: 'auto' } }}>
-          <Text type="secondary">临床示例</Text>
-          <Select
-            style={{ width: '100%', marginTop: 6 }}
-            value={sampleKey}
-            options={Object.keys(trendSamples).map((k) => ({ label: k, value: k }))}
-            onChange={loadSample}
-          />
-
+        <ClinicalCard sample={sample} />
+        <Card size="small" title="参数微调" styles={{ body: { maxHeight: '64vh', overflow: 'auto' } }}>
           <Upload {...uploadProps}>
             <Button icon={<UploadOutlined />} block style={{ marginTop: 10 }}>
               导入 Excel / CSV

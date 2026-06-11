@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { Layout, Menu, Typography, Button, Space, Dropdown, Avatar, Spin, App as AntApp } from 'antd'
+import {
+  Layout, Menu, Typography, Button, Space, Dropdown, Avatar, Spin, Tooltip, DatePicker,
+  App as AntApp,
+} from 'antd'
 import {
   LineChartOutlined, RadarChartOutlined, TableOutlined, CalculatorOutlined,
   SaveOutlined, FolderOpenOutlined, FilePdfOutlined, UserOutlined, LogoutOutlined,
-  AppstoreOutlined, SettingOutlined, CloudSyncOutlined,
+  AppstoreOutlined, SettingOutlined, CloudSyncOutlined, MedicineBoxOutlined,
 } from '@ant-design/icons'
 import TrendPage from './pages/TrendPage'
 import RadarPage from './pages/RadarPage'
@@ -12,27 +15,36 @@ import NomogramPage from './pages/NomogramPage'
 import LoginPage from './pages/LoginPage'
 import ProjectsDrawer from './pages/ProjectsDrawer'
 import AccountModal from './pages/AccountModal'
+import PatientBar from './components/PatientBar'
 import { saveProjectFile, loadProjectFile } from './export/projectIO'
 import { exportElementToPdf } from './export/exportPdf'
 import { useAuthStore } from './auth/authStore'
+import { useNavStore } from './store/navStore'
+import { NAV } from './nav'
 import { checkForUpdate, isTauri } from './updater'
 
 const { Header, Sider, Content } = Layout
 const { Title } = Typography
+const { RangePicker } = DatePicker
 
-type ViewKey = 'trend' | 'radar' | 'heatmap' | 'nomogram'
+const CAT_ICON: Record<string, React.ReactNode> = {
+  trend: <LineChartOutlined />,
+  radar: <RadarChartOutlined />,
+  heatmap: <TableOutlined />,
+  nomogram: <CalculatorOutlined />,
+}
 
-const MENU = [
-  { key: 'trend', icon: <LineChartOutlined />, label: '趋势图' },
-  { key: 'radar', icon: <RadarChartOutlined />, label: '雷达图' },
-  { key: 'heatmap', icon: <TableOutlined />, label: '热图' },
-  { key: 'nomogram', icon: <CalculatorOutlined />, label: '列线图' },
-]
+const MENU_ITEMS = NAV.map((cat) => ({
+  key: cat.key,
+  icon: CAT_ICON[cat.icon],
+  label: cat.label,
+  children: cat.children.map((sc) => ({ key: sc.key, label: sc.label })),
+}))
 
 export default function App() {
   const { message, modal } = AntApp.useApp()
   const { currentUser, ready, init, logout } = useAuthStore()
-  const [view, setView] = useState<ViewKey>('trend')
+  const { view, scenarioKey, setScenario } = useNavStore()
   const [exporting, setExporting] = useState(false)
   const [projectsOpen, setProjectsOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
@@ -42,7 +54,6 @@ export default function App() {
     init()
   }, [init])
 
-  // 桌面端启动时静默检查更新
   useEffect(() => {
     if (isTauri) runUpdateCheck(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -85,7 +96,7 @@ export default function App() {
     } catch (err) {
       message.error((err as Error).message)
     }
-    e.target.value = '' // 允许重复选同一文件
+    e.target.value = ''
   }
 
   const onExportPdf = async () => {
@@ -105,7 +116,6 @@ export default function App() {
     }
   }
 
-  // 启动时还在读会话
   if (!ready) {
     return (
       <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -114,28 +124,29 @@ export default function App() {
     )
   }
 
-  // 门禁：未登录显示登录/注册
   if (!currentUser) return <LoginPage />
 
   return (
     <Layout style={{ height: '100vh' }}>
-      <Header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#001529' }}>
-        <Title level={4} style={{ color: '#fff', margin: 0 }}>
-          MedViz · 医学数据可视化
-        </Title>
-        <Space>
+      <Header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#001529', padding: '0 16px', gap: 16 }}>
+        <Space size={14}>
+          <Space size={6}>
+            <MedicineBoxOutlined style={{ color: '#69b1ff', fontSize: 20 }} />
+            <Title level={5} style={{ color: '#fff', margin: 0, whiteSpace: 'nowrap' }}>MedViz</Title>
+          </Space>
+          <PatientBar />
+        </Space>
+
+        <Space size={8}>
+          <Tooltip title="全局时间范围筛选">
+            <RangePicker size="small" style={{ width: 220 }} />
+          </Tooltip>
           <input ref={fileRef} type="file" accept=".json" style={{ display: 'none' }} onChange={onOpen} />
-          <Button ghost size="small" icon={<AppstoreOutlined />} onClick={() => setProjectsOpen(true)}>
-            我的项目
-          </Button>
-          <Button ghost size="small" icon={<FolderOpenOutlined />} onClick={() => fileRef.current?.click()}>
-            打开文件
-          </Button>
-          <Button ghost size="small" icon={<SaveOutlined />} onClick={saveProjectFile}>
-            导出文件
-          </Button>
+          <Tooltip title="我的项目"><Button ghost size="small" icon={<AppstoreOutlined />} onClick={() => setProjectsOpen(true)} /></Tooltip>
+          <Tooltip title="打开项目文件"><Button ghost size="small" icon={<FolderOpenOutlined />} onClick={() => fileRef.current?.click()} /></Tooltip>
+          <Tooltip title="导出项目文件"><Button ghost size="small" icon={<SaveOutlined />} onClick={saveProjectFile} /></Tooltip>
           <Button type="primary" size="small" icon={<FilePdfOutlined />} loading={exporting} onClick={onExportPdf}>
-            导出PDF
+            导出/打印
           </Button>
           <Dropdown
             menu={{
@@ -158,13 +169,14 @@ export default function App() {
         </Space>
       </Header>
       <Layout>
-        <Sider width={160} theme="light">
+        <Sider width={216} theme="light" style={{ overflow: 'auto' }}>
           <Menu
             mode="inline"
-            selectedKeys={[view]}
-            items={MENU}
-            style={{ height: '100%' }}
-            onClick={(e) => setView(e.key as ViewKey)}
+            selectedKeys={[scenarioKey]}
+            defaultOpenKeys={NAV.map((c) => c.key)}
+            items={MENU_ITEMS}
+            style={{ height: '100%', borderInlineEnd: 0 }}
+            onClick={(e) => setScenario(e.key)}
           />
         </Sider>
         <Content style={{ padding: 16, overflow: 'auto' }}>

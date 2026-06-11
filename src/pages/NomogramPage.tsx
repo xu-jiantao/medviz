@@ -9,6 +9,9 @@ import type { NomogramConfig, NomogramVariable } from '@/charts/Nomogram/types'
 import { nomogramSamples } from '@/charts/Nomogram/samples'
 import { variablePoints, totalPoints, outcomeProbability } from '@/charts/Nomogram/calc'
 import { useNomogramStore } from '@/store/nomogramStore'
+import { useNavStore } from '@/store/navStore'
+import { useScenarioSample } from '@/hooks/useScenarioSample'
+import ClinicalCard from '@/components/ClinicalCard'
 import FitModal from './FitModal'
 import EvalCharts from '@/charts/Nomogram/EvalCharts'
 import type { EvalData, FitMeta } from '@/data/fitClient'
@@ -18,15 +21,14 @@ const uid = () => Math.random().toString(36).slice(2, 9)
 
 export default function NomogramPage() {
   const { config, selection, setConfig, patch, mutate, setSel, resetSel } = useNomogramStore()
-  const [sampleKey, setSampleKey] = useState('非小细胞肺癌术后生存')
+  const sample = useNavStore((s) => s.sample)
   const [fitOpen, setFitOpen] = useState(false)
   const [evalData, setEvalData] = useState<EvalData>()
   const [fitMeta, setFitMeta] = useState<FitMeta>()
 
-  const loadSample = (key: string) => {
-    setSampleKey(key)
-    setConfig(JSON.parse(JSON.stringify(nomogramSamples[key])))
-  }
+  useScenarioSample('nomogram', (key) => {
+    if (nomogramSamples[key]) setConfig(JSON.parse(JSON.stringify(nomogramSamples[key])))
+  })
 
   const total = totalPoints(config, selection)
 
@@ -81,17 +83,10 @@ export default function NomogramPage() {
       </Col>
 
       <Col flex="360px">
-        <Card size="small" title="床旁计算" styles={{ body: { maxHeight: '82vh', overflow: 'auto' } }}
+        <ClinicalCard sample={sample} />
+        <Card size="small" title="床旁计算" styles={{ body: { maxHeight: '70vh', overflow: 'auto' } }}
           extra={<Button size="small" icon={<ReloadOutlined />} onClick={resetSel}>清空</Button>}>
-          <Text type="secondary">临床示例</Text>
-          <Select
-            style={{ width: '100%', marginTop: 6 }}
-            value={sampleKey}
-            options={Object.keys(nomogramSamples).map((k) => ({ label: k, value: k }))}
-            onChange={loadSample}
-          />
-
-          <Divider style={{ margin: '12px 0' }} orientation="left">输入变量</Divider>
+          <Divider style={{ margin: '0 0 12px' }} orientation="left">输入变量</Divider>
           <Space direction="vertical" style={{ width: '100%' }} size={10}>
             {config.variables.map((v) => (
               <div key={v.id}>
