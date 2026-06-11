@@ -56,6 +56,7 @@ DEMO_USER = ("demo", "demo@medviz.app", "demo1234")
 def init_db() -> None:
     _run("CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, email TEXT, salt TEXT, hash TEXT, created TEXT)")
     _run("CREATE TABLE IF NOT EXISTS projects (username TEXT PRIMARY KEY, data TEXT, updated TEXT)")
+    _run("CREATE TABLE IF NOT EXISTS workspaces (username TEXT PRIMARY KEY, data TEXT, updated TEXT)")
     _ensure_demo()
 
 
@@ -145,5 +146,21 @@ def set_projects(username: str, projects: list) -> str:
         "INSERT INTO projects (username,data,updated) VALUES (?,?,?) "
         "ON CONFLICT(username) DO UPDATE SET data=excluded.data, updated=excluded.updated",
         (username, json.dumps(projects, ensure_ascii=False), updated),
+    )
+    return updated
+
+
+# ---------------- 云端工作区（整段 JSON：四图编辑+患者+临床判断+场景）----------------
+def get_workspace(username: str):
+    row = _run("SELECT data FROM workspaces WHERE username=?", (username,), fetch="one")
+    return json.loads(row[0]) if row and row[0] else None
+
+
+def set_workspace(username: str, workspace: dict) -> str:
+    updated = time.strftime("%Y-%m-%dT%H:%M:%S")
+    _run(
+        "INSERT INTO workspaces (username,data,updated) VALUES (?,?,?) "
+        "ON CONFLICT(username) DO UPDATE SET data=excluded.data, updated=excluded.updated",
+        (username, json.dumps(workspace, ensure_ascii=False), updated),
     )
     return updated

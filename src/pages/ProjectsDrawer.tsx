@@ -5,7 +5,7 @@ import {
 } from 'antd'
 import {
   SaveOutlined, FolderOpenOutlined, DeleteOutlined, ReloadOutlined,
-  CloudUploadOutlined, CloudDownloadOutlined, CloudOutlined, LogoutOutlined,
+  CloudUploadOutlined, CloudDownloadOutlined, CloudOutlined, CloudSyncOutlined, LogoutOutlined,
 } from '@ant-design/icons'
 import {
   listProjects, saveCurrentProject, loadProject, deleteProject, overwriteProject,
@@ -13,6 +13,7 @@ import {
 } from '@/auth/projects'
 import { useCloudStore } from '@/auth/cloudStore'
 import { cloudGetProjects, cloudPutProjects, cloudChangePassword } from '@/auth/cloudClient'
+import { syncWorkspaceFromCloud } from '@/workspace'
 
 const { Text } = Typography
 
@@ -126,8 +127,10 @@ function CloudSync({ localUsername, onAfterPull }: { localUsername: string; onAf
     try {
       if (mode === 'register') await cloud.register({ username, email, password })
       else await cloud.login({ username, password })
-      message.success('云端已登录')
       setPassword('')
+      // 登录云账号后立即双向同步工作区
+      const r = await syncWorkspaceFromCloud(localUsername).catch(() => 'none')
+      message.success(r === 'pulled' ? '云端已登录，已从云端恢复工作区' : '云端已登录，工作区将自动同步')
     } catch (e) {
       message.error((e as Error).message)
     } finally {
@@ -181,7 +184,17 @@ function CloudSync({ localUsername, onAfterPull }: { localUsername: string; onAf
             <Button size="small" type="primary" loading={busy} onClick={doChangePwd}>保存</Button>
           </Space.Compact>
         )}
-        <Text type="secondary" style={{ fontSize: 12 }}>上传=本机项目覆盖云端；恢复=云端项目覆盖本机（换设备时用）</Text>
+        <Button size="small" block icon={<CloudSyncOutlined />} loading={busy} onClick={async () => {
+          setBusy(true)
+          try {
+            const r = await syncWorkspaceFromCloud(localUsername)
+            message.success(r === 'pulled' ? '已从云端恢复工作区' : r === 'pushed' ? '已上传工作区到云端' : '工作区已是最新')
+          } catch (e) { message.error((e as Error).message) } finally { setBusy(false) }
+        }}>同步工作区（编辑内容）</Button>
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          登录云账号后工作区(四图编辑/患者/临床判断)会自动云同步；换设备/重装登录同一云账号即恢复。<br />
+          上传/恢复=对「命名项目」的整组覆盖。
+        </Text>
       </Space>
     )
   }

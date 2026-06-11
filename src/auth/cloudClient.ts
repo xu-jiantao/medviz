@@ -38,3 +38,9 @@ export const cloudPutProjects = (baseUrl: string, token: string, projects: Saved
 
 export const cloudChangePassword = (baseUrl: string, token: string, oldPassword: string, newPassword: string) =>
   req<{ ok: boolean }>(`${base(baseUrl)}/auth/change-password`, 'POST', { oldPassword, newPassword }, token)
+
+export const cloudGetWorkspace = (baseUrl: string, token: string) =>
+  req<{ workspace: Record<string, unknown> | null }>(`${base(baseUrl)}/cloud/workspace`, 'GET', undefined, token)
+
+export const cloudPutWorkspace = (baseUrl: string, token: string, workspace: Record<string, unknown>) =>
+  req<{ ok: boolean; updated: string }>(`${base(baseUrl)}/cloud/workspace`, 'PUT', { workspace }, token)

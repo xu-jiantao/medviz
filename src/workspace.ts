@@ -11,6 +11,8 @@ import { trendSamples } from './charts/TrendChart/samples'
 import { radarSamples } from './charts/RadarChart/samples'
 import { heatmapSamples } from './charts/Heatmap/samples'
 import { nomogramSamples } from './charts/Nomogram/samples'
+import { useCloudStore } from './auth/cloudStore'
+import { cloudGetWorkspace, cloudPutWorkspace } from './auth/cloudClient'
 
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x))
 
@@ -43,10 +45,8 @@ export function gatherWorkspace(): WorkspaceData {
   }
 }
 
-/** 登录/刷新后恢复该用户的工作区（不触发示例重载） */
-export async function loadWorkspace(username: string): Promise<boolean> {
-  const w = await idbGet<WorkspaceData>(key(username))
-  if (!w) return false
+/** 把一份工作区数据应用到各 store */
+function applyWorkspace(w: WorkspaceData) {
   if (w.trend) useTrendStore.getState().setConfig(w.trend as never)
   if (w.radar) useRadarStore.getState().setConfig(w.radar as never)
   if (w.heatmap) useHeatmapStore.getState().setConfig(w.heatmap as never)
@@ -55,7 +55,47 @@ export async function loadWorkspace(username: string): Promise<boolean> {
   if (w.patient) usePatientStore.getState().setPatient(w.patient as never)
   if (w.clinicalOverrides) useClinicalStore.getState().setOverrides(w.clinicalOverrides as never)
   if (w.scenarioKey) useNavStore.getState().restore(w.scenarioKey)
+}
+
+/** 登录/刷新后恢复该用户的本地工作区（不触发示例重载） */
+export async function loadWorkspace(username: string): Promise<boolean> {
+  const w = await idbGet<WorkspaceData>(key(username))
+  if (!w) return false
+  applyWorkspace(w)
   return true
+}
+
+/** 立即把当前工作区推送到云端（需已登录云账号）。返回是否推送。 */
+export async function pushWorkspaceToCloud(): Promise<boolean> {
+  const { backendUrl, token } = useCloudStore.getState()
+  if (!token) return false
+  await cloudPutWorkspace(backendUrl, token, gatherWorkspace() as never)
+  return true
+}
+
+/**
+ * 与云端工作区双向合并（以 savedAt 较新者为准）：
+ * - 云端更新 → 拉下来应用并写本地
+ * - 本地更新 → 推到云端
+ * 用于登录云账号后、换设备/重装恢复。返回 'pulled' | 'pushed' | 'none'。
+ */
+export async function syncWorkspaceFromCloud(localUsername: string): Promise<'pulled' | 'pushed' | 'none'> {
+  const { backendUrl, token } = useCloudStore.getState()
+  if (!token) return 'none'
+  const remote = (await cloudGetWorkspace(backendUrl, token)).workspace as WorkspaceData | null
+  const local = await idbGet<WorkspaceData>(key(localUsername))
+  const rt = remote?.savedAt ? Date.parse(remote.savedAt) : 0
+  const lt = local?.savedAt ? Date.parse(local.savedAt) : 0
+  if (remote && rt >= lt) {
+    applyWorkspace(remote)
+    await idbSet(key(localUsername), remote) // 同步进本地缓存
+    return 'pulled'
+  }
+  if (local) {
+    await cloudPutWorkspace(backendUrl, token, local as never)
+    return 'pushed'
+  }
+  return 'none'
 }
 
 /** 重置为初始默认（切换到无工作区的用户时用，避免上一个用户数据残留） */
@@ -71,14 +111,20 @@ export function resetWorkspace() {
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null
+let cloudTimer: ReturnType<typeof setTimeout> | null = null
 
-/** 开启自动保存：任一相关 store 变化即防抖写入 IndexedDB。返回取消函数。 */
+/** 开启自动保存：任一相关 store 变化即防抖写本地，并（已登录云账号时）推送云端。返回取消函数。 */
 export function startAutosave(username: string): () => void {
   const trigger = () => {
     if (saveTimer) clearTimeout(saveTimer)
     saveTimer = setTimeout(() => {
       idbSet(key(username), gatherWorkspace()).catch(() => {})
     }, 600)
+    // 云端推送：更长防抖，失败静默（避免 Render 冷启动卡顿）
+    if (useCloudStore.getState().token) {
+      if (cloudTimer) clearTimeout(cloudTimer)
+      cloudTimer = setTimeout(() => { pushWorkspaceToCloud().catch(() => {}) }, 3000)
+    }
   }
   const unsubs = [
     useTrendStore.subscribe(trigger),
@@ -92,5 +138,6 @@ export function startAutosave(username: string): () => void {
   return () => {
     unsubs.forEach((u) => u())
     if (saveTimer) clearTimeout(saveTimer)
+    if (cloudTimer) clearTimeout(cloudTimer)
   }
 }

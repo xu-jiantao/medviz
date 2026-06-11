@@ -23,7 +23,7 @@ import { exportElementToPdf } from './export/exportPdf'
 import { exportCurrentChartExcel } from './export/exportChartExcel'
 import { useAuthStore } from './auth/authStore'
 import { useNavStore } from './store/navStore'
-import { loadWorkspace, resetWorkspace, startAutosave } from './workspace'
+import { loadWorkspace, resetWorkspace, startAutosave, syncWorkspaceFromCloud } from './workspace'
 import { NAV } from './nav'
 import { checkForUpdate, isTauri } from './updater'
 
@@ -68,6 +68,7 @@ export default function App() {
     let cleanup: (() => void) | undefined
     loadWorkspace(currentUser.username)
       .then((ok) => { if (!ok) resetWorkspace() })
+      .then(() => syncWorkspaceFromCloud(currentUser.username).catch(() => 'none'))
       .finally(() => { cleanup = startAutosave(currentUser.username) })
     return () => cleanup?.()
   }, [currentUser?.username])

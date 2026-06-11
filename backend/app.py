@@ -96,6 +96,10 @@ class ChangePwdReq(BaseModel):
     newPassword: str
 
 
+class WorkspaceReq(BaseModel):
+    workspace: dict
+
+
 def current_user(authorization: str = Header(default="")) -> str:
     """从 Authorization: Bearer <token> 解析出用户名。"""
     token = authorization.removeprefix("Bearer ").strip()
@@ -146,6 +150,17 @@ def cloud_get(username: str = Depends(current_user)):
 def cloud_put(req: ProjectsReq, username: str = Depends(current_user)):
     updated = auth_store.set_projects(username, req.projects)
     return {"ok": True, "updated": updated, "count": len(req.projects)}
+
+
+@app.get("/cloud/workspace")
+def cloud_get_workspace(username: str = Depends(current_user)):
+    return {"workspace": auth_store.get_workspace(username)}
+
+
+@app.put("/cloud/workspace")
+def cloud_put_workspace(req: WorkspaceReq, username: str = Depends(current_user)):
+    updated = auth_store.set_workspace(username, req.workspace)
+    return {"ok": True, "updated": updated}
 
 
 @app.post("/fit/logistic")
