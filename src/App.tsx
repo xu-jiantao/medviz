@@ -3,7 +3,7 @@ import { Layout, Menu, Typography, Button, Space, Dropdown, Avatar, Spin, App as
 import {
   LineChartOutlined, RadarChartOutlined, TableOutlined, CalculatorOutlined,
   SaveOutlined, FolderOpenOutlined, FilePdfOutlined, UserOutlined, LogoutOutlined,
-  AppstoreOutlined, SettingOutlined,
+  AppstoreOutlined, SettingOutlined, CloudSyncOutlined,
 } from '@ant-design/icons'
 import TrendPage from './pages/TrendPage'
 import RadarPage from './pages/RadarPage'
@@ -15,6 +15,7 @@ import AccountModal from './pages/AccountModal'
 import { saveProjectFile, loadProjectFile } from './export/projectIO'
 import { exportElementToPdf } from './export/exportPdf'
 import { useAuthStore } from './auth/authStore'
+import { checkForUpdate, isTauri } from './updater'
 
 const { Header, Sider, Content } = Layout
 const { Title } = Typography
@@ -29,7 +30,7 @@ const MENU = [
 ]
 
 export default function App() {
-  const { message } = AntApp.useApp()
+  const { message, modal } = AntApp.useApp()
   const { currentUser, ready, init, logout } = useAuthStore()
   const [view, setView] = useState<ViewKey>('trend')
   const [exporting, setExporting] = useState(false)
@@ -40,6 +41,40 @@ export default function App() {
   useEffect(() => {
     init()
   }, [init])
+
+  // 桌面端启动时静默检查更新
+  useEffect(() => {
+    if (isTauri) runUpdateCheck(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const runUpdateCheck = async (manual: boolean) => {
+    try {
+      const upd = await checkForUpdate()
+      if (!upd) {
+        if (manual) message.success('已是最新版本')
+        return
+      }
+      modal.confirm({
+        title: `发现新版本 ${upd.version}`,
+        content: upd.notes ? upd.notes : '是否现在下载并更新？更新后应用会自动重启。',
+        okText: '立即更新',
+        cancelText: '稍后',
+        onOk: async () => {
+          const hide = message.loading('正在下载更新…', 0)
+          try {
+            await upd.install()
+          } catch (e) {
+            message.error('更新失败：' + (e as Error).message)
+          } finally {
+            hide()
+          }
+        },
+      })
+    } catch (e) {
+      if (manual) message.error('检查更新失败：' + (e as Error).message)
+    }
+  }
 
   const onOpen = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -108,6 +143,9 @@ export default function App() {
                 { key: 'u', label: currentUser.email || currentUser.username, disabled: true },
                 { type: 'divider' },
                 { key: 'account', icon: <SettingOutlined />, label: '账号设置 / 改密码', onClick: () => setAccountOpen(true) },
+                ...(isTauri
+                  ? [{ key: 'update', icon: <CloudSyncOutlined />, label: '检查更新', onClick: () => runUpdateCheck(true) }]
+                  : []),
                 { key: 'logout', icon: <LogoutOutlined />, label: '退出登录', onClick: () => logout() },
               ],
             }}

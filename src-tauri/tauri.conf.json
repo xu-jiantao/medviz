@@ -26,9 +26,18 @@
       "csp": null
     }
   },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/xu-jiantao/medviz/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDZBMEM1MTIyRTNEQTc0RDAKUldUUWROcmpJbEVNYWdoS3lIdjJ4RXgwYnhLTkVHVXBnanBObUs0OVQrN0NrT1lLQzZVVHNabGEK"
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "externalBin": [
       "binaries/medviz-backend"
     ],
