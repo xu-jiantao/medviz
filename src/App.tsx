@@ -7,21 +7,27 @@ import {
   LineChartOutlined, RadarChartOutlined, TableOutlined, CalculatorOutlined,
   SaveOutlined, FolderOpenOutlined, FilePdfOutlined, UserOutlined, LogoutOutlined,
   AppstoreOutlined, SettingOutlined, CloudSyncOutlined, MedicineBoxOutlined,
+  FileExcelOutlined, DatabaseOutlined,
 } from '@ant-design/icons'
 import TrendPage from './pages/TrendPage'
 import RadarPage from './pages/RadarPage'
 import HeatmapPage from './pages/HeatmapPage'
 import NomogramPage from './pages/NomogramPage'
 import LoginPage from './pages/LoginPage'
+import AggregatePage from './pages/AggregatePage'
 import ProjectsDrawer from './pages/ProjectsDrawer'
 import AccountModal from './pages/AccountModal'
 import PatientBar from './components/PatientBar'
 import { saveProjectFile, loadProjectFile } from './export/projectIO'
 import { exportElementToPdf } from './export/exportPdf'
+import { exportCurrentChartExcel } from './export/exportChartExcel'
 import { useAuthStore } from './auth/authStore'
 import { useNavStore } from './store/navStore'
+import { loadWorkspace, resetWorkspace, startAutosave } from './workspace'
 import { NAV } from './nav'
 import { checkForUpdate, isTauri } from './updater'
+
+const ROLE_LABEL: Record<string, string> = { admin: '管理员', doctor: '医生', user: '普通用户' }
 
 const { Header, Sider, Content } = Layout
 const { Title } = Typography
@@ -48,11 +54,23 @@ export default function App() {
   const [exporting, setExporting] = useState(false)
   const [projectsOpen, setProjectsOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
+  const [showAggregate, setShowAggregate] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const canAggregate = currentUser?.role === 'admin' || currentUser?.role === 'doctor'
 
   useEffect(() => {
     init()
   }, [init])
+
+  // 登录后加载该用户工作区（无则重置默认），并开启自动保存
+  useEffect(() => {
+    if (!currentUser) return
+    let cleanup: (() => void) | undefined
+    loadWorkspace(currentUser.username)
+      .then((ok) => { if (!ok) resetWorkspace() })
+      .finally(() => { cleanup = startAutosave(currentUser.username) })
+    return () => cleanup?.()
+  }, [currentUser?.username])
 
   useEffect(() => {
     if (isTauri) runUpdateCheck(false)
@@ -145,13 +163,16 @@ export default function App() {
           <Tooltip title="我的项目"><Button ghost size="small" icon={<AppstoreOutlined />} onClick={() => setProjectsOpen(true)} /></Tooltip>
           <Tooltip title="打开项目文件"><Button ghost size="small" icon={<FolderOpenOutlined />} onClick={() => fileRef.current?.click()} /></Tooltip>
           <Tooltip title="导出项目文件"><Button ghost size="small" icon={<SaveOutlined />} onClick={saveProjectFile} /></Tooltip>
+          <Button size="small" icon={<FileExcelOutlined />} onClick={() => exportCurrentChartExcel(view)} style={{ background: '#52c41a', color: '#fff', borderColor: '#52c41a' }}>
+            导出Excel
+          </Button>
           <Button type="primary" size="small" icon={<FilePdfOutlined />} loading={exporting} onClick={onExportPdf}>
             导出/打印
           </Button>
           <Dropdown
             menu={{
               items: [
-                { key: 'u', label: currentUser.email || currentUser.username, disabled: true },
+                { key: 'u', label: `${currentUser.email || currentUser.username}（${ROLE_LABEL[currentUser.role]}）`, disabled: true },
                 { type: 'divider' },
                 { key: 'account', icon: <SettingOutlined />, label: '账号设置 / 改密码', onClick: () => setAccountOpen(true) },
                 ...(isTauri
@@ -172,18 +193,30 @@ export default function App() {
         <Sider width={216} theme="light" style={{ overflow: 'auto' }}>
           <Menu
             mode="inline"
-            selectedKeys={[scenarioKey]}
+            selectedKeys={[showAggregate ? 'aggregate' : scenarioKey]}
             defaultOpenKeys={NAV.map((c) => c.key)}
-            items={MENU_ITEMS}
+            items={[
+              ...MENU_ITEMS,
+              ...(canAggregate
+                ? [{ key: 'aggregate', icon: <DatabaseOutlined />, label: '数据汇总' }]
+                : []),
+            ]}
             style={{ height: '100%', borderInlineEnd: 0 }}
-            onClick={(e) => setScenario(e.key)}
+            onClick={(e) => {
+              if (e.key === 'aggregate') setShowAggregate(true)
+              else { setShowAggregate(false); setScenario(e.key) }
+            }}
           />
         </Sider>
         <Content style={{ padding: 16, overflow: 'auto' }}>
-          {view === 'trend' && <TrendPage />}
-          {view === 'radar' && <RadarPage />}
-          {view === 'heatmap' && <HeatmapPage />}
-          {view === 'nomogram' && <NomogramPage />}
+          {showAggregate ? <AggregatePage /> : (
+            <>
+              {view === 'trend' && <TrendPage />}
+              {view === 'radar' && <RadarPage />}
+              {view === 'heatmap' && <HeatmapPage />}
+              {view === 'nomogram' && <NomogramPage />}
+            </>
+          )}
         </Content>
       </Layout>
 

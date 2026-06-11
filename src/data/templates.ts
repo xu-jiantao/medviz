@@ -1,13 +1,29 @@
 import * as XLSX from 'xlsx'
 
-type Cell = string | number
-type Aoa = Cell[][]
+export type Cell = string | number
+export type Aoa = Cell[][]
 
 /** 用二维数组生成 .xlsx 并触发浏览器下载 */
-function downloadSheet(filename: string, aoa: Aoa) {
+export function downloadSheet(filename: string, aoa: Aoa, sheetName = 'Sheet1') {
   const ws = XLSX.utils.aoa_to_sheet(aoa)
   const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1')
+  XLSX.utils.book_append_sheet(wb, ws, sheetName)
+  const out = XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
+  const blob = new Blob([out], { type: 'application/octet-stream' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+/** 多 sheet 工作簿下载 */
+export function downloadWorkbook(filename: string, sheets: { name: string; aoa: Aoa }[]) {
+  const wb = XLSX.utils.book_new()
+  for (const sh of sheets) {
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sh.aoa), sh.name.slice(0, 31))
+  }
   const out = XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
   const blob = new Blob([out], { type: 'application/octet-stream' })
   const url = URL.createObjectURL(blob)

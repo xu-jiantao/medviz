@@ -36,3 +36,9 @@ export const idbGet = <T>(key: string) => tx<T | undefined>('readonly', (s) => s
 export const idbSet = (key: string, val: unknown) =>
   tx<void>('readwrite', (s) => s.put(val, key))
 export const idbDel = (key: string) => tx<void>('readwrite', (s) => s.delete(key))
+
+/** 列出所有以 prefix 开头的 key（用于汇总所有用户/工作区） */
+export const idbKeys = (prefix = '') =>
+  tx<IDBValidKey[]>('readonly', (s) => s.getAllKeys()).then((keys) =>
+    (keys as string[]).filter((k) => typeof k === 'string' && k.startsWith(prefix)),
+  )

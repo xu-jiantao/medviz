@@ -5,10 +5,8 @@ import {
 import { DeleteOutlined, PlusOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
 import type { UploadProps } from 'antd'
 import TrendChart from '@/charts/TrendChart/TrendChart'
-import { trendSamples } from '@/charts/TrendChart/samples'
 import { useTrendStore } from '@/store/trendStore'
 import { useNavStore } from '@/store/navStore'
-import { useScenarioSample } from '@/hooks/useScenarioSample'
 import ClinicalCard from '@/components/ClinicalCard'
 import { importTrendExcel } from '@/data/importExcel'
 import { downloadTrendTemplate } from '@/data/templates'
@@ -18,12 +16,9 @@ const uid = () => Math.random().toString(36).slice(2, 9)
 
 export default function TrendPage() {
   const { message } = AntApp.useApp()
-  const { config, setConfig, patch, addReferenceLine, removeReferenceLine, addEventMarker, removeEventMarker } =
+  const { config, patch, addReferenceLine, removeReferenceLine, addEventMarker, removeEventMarker } =
     useTrendStore()
   const sample = useNavStore((s) => s.sample)
-  useScenarioSample('trend', (key) => {
-    if (trendSamples[key]) setConfig(JSON.parse(JSON.stringify(trendSamples[key])))
-  })
 
   const uploadProps: UploadProps = {
     accept: '.xlsx,.xls,.csv',

@@ -1,12 +1,15 @@
 import { create } from 'zustand'
-import { idbGet, idbSet, idbDel } from './idb'
+import { idbGet, idbSet, idbDel, idbKeys } from './idb'
 import { hashPassword, verifyPassword } from './crypto'
+
+export type Role = 'admin' | 'doctor' | 'user'
 
 export interface StoredUser {
   username: string
   email: string
   salt: string
   hash: string
+  role: Role
   createdAt: string
   // 密保问题（用于忘记密码找回，可选）
   question?: string
@@ -19,6 +22,7 @@ const normAnswer = (a: string) => a.trim().toLowerCase()
 export interface CurrentUser {
   username: string
   email: string
+  role: Role
 }
 
 interface AuthState {
@@ -37,15 +41,32 @@ interface AuthState {
 const userKey = (username: string) => `user:${username.toLowerCase()}`
 const SESSION_KEY = 'session'
 
-// 内置演示账号，测试时免注册直接登录
-export const DEMO = { username: 'demo', email: 'demo@medviz.app', password: 'demo1234' }
+// 内置三种角色的演示账号
+export const SEED_ACCOUNTS: { username: string; password: string; email: string; role: Role; label: string }[] = [
+  { username: 'admin', password: 'admin1234', email: 'admin@medviz.app', role: 'admin', label: '管理员' },
+  { username: 'doctor', password: 'doctor1234', email: 'doctor@medviz.app', role: 'doctor', label: '医生' },
+  { username: 'demo', password: 'demo1234', email: 'demo@medviz.app', role: 'user', label: '普通用户' },
+]
+export const DEMO = SEED_ACCOUNTS[2] // 默认一键登录用普通用户
 
 /** 确保演示账号存在（幂等，不影响当前会话） */
-async function ensureDemo() {
-  const k = userKey(DEMO.username)
-  if (await idbGet<StoredUser>(k)) return
-  const { hash, salt } = await hashPassword(DEMO.password)
-  await idbSet(k, { username: DEMO.username, email: DEMO.email, salt, hash, createdAt: new Date().toISOString() })
+async function ensureSeedAccounts() {
+  for (const a of SEED_ACCOUNTS) {
+    const k = userKey(a.username)
+    if (await idbGet<StoredUser>(k)) continue
+    const { hash, salt } = await hashPassword(a.password)
+    await idbSet(k, {
+      username: a.username, email: a.email, salt, hash, role: a.role,
+      createdAt: new Date().toISOString(),
+    } as StoredUser)
+  }
+}
+
+/** 列出所有账号（管理员/医生汇总用） */
+export async function listUsers(): Promise<StoredUser[]> {
+  const keys = await idbKeys('user:')
+  const users = await Promise.all(keys.map((k) => idbGet<StoredUser>(k as string)))
+  return users.filter((u): u is StoredUser => !!u)
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -53,12 +74,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   ready: false,
 
   init: async () => {
-    await ensureDemo() // 每次启动确保演示账号可用
+    await ensureSeedAccounts() // 每次启动确保演示账号可用
     const session = await idbGet<{ username: string }>(SESSION_KEY)
     if (session?.username) {
       const u = await idbGet<StoredUser>(userKey(session.username))
       if (u) {
-        set({ currentUser: { username: u.username, email: u.email } })
+        set({ currentUser: { username: u.username, email: u.email, role: u.role ?? 'user' } })
       }
     }
     set({ ready: true })
@@ -70,7 +91,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const exists = await idbGet<StoredUser>(userKey(username))
     if (exists) throw new Error('该用户名已被注册')
     const { hash, salt } = await hashPassword(password)
-    const user: StoredUser = { username, email: email.trim(), salt, hash, createdAt: new Date().toISOString() }
+    const user: StoredUser = { username, email: email.trim(), salt, hash, role: 'user', createdAt: new Date().toISOString() }
     if (question && answer) {
       const a = await hashPassword(normAnswer(answer))
       user.question = question.trim()
@@ -79,7 +100,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
     await idbSet(userKey(username), user)
     await idbSet(SESSION_KEY, { username })
-    set({ currentUser: { username, email: user.email } })
+    set({ currentUser: { username, email: user.email, role: user.role } })
   },
 
   login: async ({ username, password }) => {
@@ -89,11 +110,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const ok = await verifyPassword(password, u.salt, u.hash)
     if (!ok) throw new Error('密码错误')
     await idbSet(SESSION_KEY, { username: u.username })
-    set({ currentUser: { username: u.username, email: u.email } })
+    set({ currentUser: { username: u.username, email: u.email, role: u.role ?? 'user' } })
   },
 
   demoLogin: async () => {
-    await ensureDemo()
+    await ensureSeedAccounts()
     await get().login({ username: DEMO.username, password: DEMO.password })
   },
 
@@ -125,7 +146,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await idbSet(userKey(username), { ...u, hash, salt })
     // 重置后自动登录
     await idbSet(SESSION_KEY, { username: u.username })
-    set({ currentUser: { username: u.username, email: u.email } })
+    set({ currentUser: { username: u.username, email: u.email, role: u.role ?? 'user' } })
   },
 
   logout: async () => {

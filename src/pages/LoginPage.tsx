@@ -4,7 +4,7 @@ import {
   UserOutlined, LockOutlined, MailOutlined, MedicineBoxOutlined, ThunderboltOutlined,
   SafetyOutlined, ArrowLeftOutlined,
 } from '@ant-design/icons'
-import { useAuthStore, DEMO } from '@/auth/authStore'
+import { useAuthStore, SEED_ACCOUNTS } from '@/auth/authStore'
 
 const { Title, Text } = Typography
 
@@ -138,11 +138,15 @@ export default function LoginPage() {
               <Text type="secondary" style={{ fontSize: 12 }}>或</Text>
             </Divider>
             <Button icon={<ThunderboltOutlined />} block onClick={onDemo} loading={loading}>
-              用演示账号一键登录
+              用演示账号一键登录（普通用户）
             </Button>
-            <Text type="secondary" style={{ fontSize: 12, display: 'block', textAlign: 'center', marginTop: 8 }}>
-              演示账号：{DEMO.username} / {DEMO.password}　·　账号仅存本机，离线可用
-            </Text>
+            <div style={{ fontSize: 12, marginTop: 8, color: '#888', textAlign: 'center' }}>
+              演示账号（手动登录可体验不同角色）：
+              {SEED_ACCOUNTS.map((a) => (
+                <div key={a.username}>{a.label}：{a.username} / {a.password}</div>
+              ))}
+              <div style={{ marginTop: 4 }}>账号仅存本机，离线可用</div>
+            </div>
           </>
         )}
       </Card>

@@ -15,7 +15,7 @@ interface PatientState {
 }
 
 // 演示用默认患者
-const DEFAULT: Patient = {
+export const DEFAULT_PATIENT: Patient = {
   name: '王秀英',
   gender: '女',
   age: 68,
@@ -25,6 +25,6 @@ const DEFAULT: Patient = {
 }
 
 export const usePatientStore = create<PatientState>((set) => ({
-  patient: DEFAULT,
+  patient: DEFAULT_PATIENT,
   setPatient: (p) => set((s) => ({ patient: { ...s.patient, ...p } })),
 }))

@@ -7,10 +7,8 @@ import type { UploadProps } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import RadarChart from '@/charts/RadarChart/RadarChart'
 import type { RadarDimension } from '@/charts/RadarChart/types'
-import { radarSamples } from '@/charts/RadarChart/samples'
 import { useRadarStore } from '@/store/radarStore'
 import { useNavStore } from '@/store/navStore'
-import { useScenarioSample } from '@/hooks/useScenarioSample'
 import ClinicalCard from '@/components/ClinicalCard'
 import { importRadarExcel } from '@/data/importExcel'
 import { downloadRadarTemplate } from '@/data/templates'
@@ -21,14 +19,11 @@ const PALETTE = ['#1677ff', '#cf1322', '#fa8c16', '#52c41a', '#722ed1', '#13c2c2
 
 export default function RadarPage() {
   const {
-    config, setConfig, patch, addDimension, removeDimension, updateDimension,
+    config, patch, addDimension, removeDimension, updateDimension,
     addSeries, removeSeries, updateSeries, setValue,
   } = useRadarStore()
   const { message } = AntApp.useApp()
   const sample = useNavStore((s) => s.sample)
-  useScenarioSample('radar', (key) => {
-    if (radarSamples[key]) setConfig(JSON.parse(JSON.stringify(radarSamples[key])))
-  })
 
   const uploadProps: UploadProps = {
     accept: '.xlsx,.xls,.csv',

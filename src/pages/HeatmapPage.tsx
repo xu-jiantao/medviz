@@ -9,10 +9,8 @@ import type { ColumnsType } from 'antd/es/table'
 import Heatmap from '@/charts/Heatmap/Heatmap'
 import type { HeatAxisItem } from '@/charts/Heatmap/types'
 import { COLOR_PRESETS } from '@/charts/Heatmap/types'
-import { heatmapSamples } from '@/charts/Heatmap/samples'
 import { useHeatmapStore } from '@/store/heatmapStore'
 import { useNavStore } from '@/store/navStore'
-import { useScenarioSample } from '@/hooks/useScenarioSample'
 import ClinicalCard from '@/components/ClinicalCard'
 import { importHeatmapExcel } from '@/data/importExcel'
 import { downloadHeatmapTemplate } from '@/data/templates'
@@ -25,9 +23,6 @@ export default function HeatmapPage() {
   const { message } = AntApp.useApp()
   const { config } = s
   const sample = useNavStore((st) => st.sample)
-  useScenarioSample('heatmap', (key) => {
-    if (heatmapSamples[key]) s.setConfig(JSON.parse(JSON.stringify(heatmapSamples[key])))
-  })
 
   const uploadProps: UploadProps = {
     accept: '.xlsx,.xls,.csv',

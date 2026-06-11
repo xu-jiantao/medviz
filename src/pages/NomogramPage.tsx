@@ -6,11 +6,9 @@ import {
 import { DeleteOutlined, PlusOutlined, ReloadOutlined, ExperimentOutlined } from '@ant-design/icons'
 import NomogramChart from '@/charts/Nomogram/NomogramChart'
 import type { NomogramConfig, NomogramVariable } from '@/charts/Nomogram/types'
-import { nomogramSamples } from '@/charts/Nomogram/samples'
 import { variablePoints, totalPoints, outcomeProbability } from '@/charts/Nomogram/calc'
 import { useNomogramStore } from '@/store/nomogramStore'
 import { useNavStore } from '@/store/navStore'
-import { useScenarioSample } from '@/hooks/useScenarioSample'
 import ClinicalCard from '@/components/ClinicalCard'
 import FitModal from './FitModal'
 import EvalCharts from '@/charts/Nomogram/EvalCharts'
@@ -25,10 +23,6 @@ export default function NomogramPage() {
   const [fitOpen, setFitOpen] = useState(false)
   const [evalData, setEvalData] = useState<EvalData>()
   const [fitMeta, setFitMeta] = useState<FitMeta>()
-
-  useScenarioSample('nomogram', (key) => {
-    if (nomogramSamples[key]) setConfig(JSON.parse(JSON.stringify(nomogramSamples[key])))
-  })
 
   const total = totalPoints(config, selection)
 
