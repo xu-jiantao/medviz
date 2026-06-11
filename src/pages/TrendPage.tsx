@@ -2,12 +2,13 @@ import { useState } from 'react'
 import {
   Card, Select, Switch, Input, Button, Space, Table, Upload, App as AntApp, Divider, Typography, InputNumber, Row, Col,
 } from 'antd'
-import { DeleteOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons'
+import { DeleteOutlined, PlusOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
 import type { UploadProps } from 'antd'
 import TrendChart from '@/charts/TrendChart/TrendChart'
 import { trendSamples } from '@/charts/TrendChart/samples'
 import { useTrendStore } from '@/store/trendStore'
 import { importTrendExcel } from '@/data/importExcel'
+import { downloadTrendTemplate } from '@/data/templates'
 
 const { Text } = Typography
 const uid = () => Math.random().toString(36).slice(2, 9)
@@ -61,9 +62,12 @@ export default function TrendPage() {
               导入 Excel / CSV
             </Button>
           </Upload>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            格式：首列时间点，其余每列一个指标
-          </Text>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+            <Text type="secondary" style={{ fontSize: 12 }}>格式：首列时间点，其余每列一个指标</Text>
+            <Button type="link" size="small" icon={<DownloadOutlined />} style={{ padding: 0 }} onClick={downloadTrendTemplate}>
+              下载模板
+            </Button>
+          </div>
 
           <Divider style={{ margin: '12px 0' }} />
 

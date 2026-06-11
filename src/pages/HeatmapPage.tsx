@@ -3,7 +3,7 @@ import {
   Card, Select, Switch, Input, Button, Space, Table, Upload, App as AntApp, Divider,
   Typography, InputNumber, Row, Col, ColorPicker, Segmented,
 } from 'antd'
-import { DeleteOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons'
+import { DeleteOutlined, PlusOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
 import type { UploadProps } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import Heatmap from '@/charts/Heatmap/Heatmap'
@@ -12,6 +12,7 @@ import { COLOR_PRESETS } from '@/charts/Heatmap/types'
 import { heatmapSamples } from '@/charts/Heatmap/samples'
 import { useHeatmapStore } from '@/store/heatmapStore'
 import { importHeatmapExcel } from '@/data/importExcel'
+import { downloadHeatmapTemplate } from '@/data/templates'
 
 const { Text } = Typography
 const uid = () => Math.random().toString(36).slice(2, 9)
@@ -121,7 +122,12 @@ export default function HeatmapPage() {
           <Upload {...uploadProps}>
             <Button icon={<UploadOutlined />} block style={{ marginTop: 10 }}>导入 Excel / CSV</Button>
           </Upload>
-          <Text type="secondary" style={{ fontSize: 12 }}>格式：首列行名，表头为列名，单元格为数值/分类</Text>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+            <Text type="secondary" style={{ fontSize: 12 }}>首列行名，表头为列名，单元格为数值/分类</Text>
+            <Button type="link" size="small" icon={<DownloadOutlined />} style={{ padding: 0 }} onClick={downloadHeatmapTemplate}>
+              下载模板
+            </Button>
+          </div>
 
           <Divider style={{ margin: '12px 0' }} />
           <div>

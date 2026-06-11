@@ -3,7 +3,7 @@ import {
   Card, Select, Switch, Input, Button, Space, Table, Upload, App as AntApp, Divider,
   Typography, InputNumber, Row, Col, ColorPicker, Segmented,
 } from 'antd'
-import { DeleteOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons'
+import { DeleteOutlined, PlusOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
 import type { UploadProps } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import RadarChart from '@/charts/RadarChart/RadarChart'
@@ -11,6 +11,7 @@ import type { RadarDimension } from '@/charts/RadarChart/types'
 import { radarSamples } from '@/charts/RadarChart/samples'
 import { useRadarStore } from '@/store/radarStore'
 import { importRadarExcel } from '@/data/importExcel'
+import { downloadRadarTemplate } from '@/data/templates'
 
 const { Text } = Typography
 const uid = () => Math.random().toString(36).slice(2, 9)
@@ -122,9 +123,12 @@ export default function RadarPage() {
               导入 Excel / CSV
             </Button>
           </Upload>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            格式：首列维度，「满分」列为量程，其余每列一组
-          </Text>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+            <Text type="secondary" style={{ fontSize: 12 }}>首列维度，「满分」列为量程，其余每列一组</Text>
+            <Button type="link" size="small" icon={<DownloadOutlined />} style={{ padding: 0 }} onClick={downloadRadarTemplate}>
+              下载模板
+            </Button>
+          </div>
 
           <Divider style={{ margin: '12px 0' }} />
           <div>

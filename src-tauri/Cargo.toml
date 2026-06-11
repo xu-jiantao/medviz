@@ -1,6 +1,6 @@
 [package]
 name = "app"
-version = "0.4.1"
+version = "0.4.2"
 description = "MedViz 医学数据可视化工具"
 authors = ["MedViz"]
 license = ""

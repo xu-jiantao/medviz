@@ -3,10 +3,11 @@ import {
   Modal, Input, Upload, Button, Select, Segmented, Space, Typography, Table, Tag,
   App as AntApp, Divider, Alert,
 } from 'antd'
-import { UploadOutlined, CheckCircleTwoTone, CloseCircleTwoTone } from '@ant-design/icons'
+import { UploadOutlined, CheckCircleTwoTone, CloseCircleTwoTone, DownloadOutlined } from '@ant-design/icons'
 import type { UploadProps } from 'antd'
 import type { NomogramConfig } from '@/charts/Nomogram/types'
 import { parseRecords } from '@/data/importExcel'
+import { downloadLogisticTemplate, downloadCoxTemplate } from '@/data/templates'
 import { fitLogistic, fitCox, checkBackend, type PredictorSpec, type EvalData, type FitMeta } from '@/data/fitClient'
 
 const { Text } = Typography
@@ -121,9 +122,13 @@ export default function FitModal({ open, onClose, onFitted }: Props) {
           )}
         </div>
 
-        <Upload {...uploadProps}>
-          <Button icon={<UploadOutlined />}>上传病例数据 (CSV / Excel)</Button>
-        </Upload>
+        <Space>
+          <Upload {...uploadProps}>
+            <Button icon={<UploadOutlined />}>上传病例数据 (CSV / Excel)</Button>
+          </Upload>
+          <Button type="link" size="small" icon={<DownloadOutlined />} onClick={downloadLogisticTemplate}>Logistic 模板</Button>
+          <Button type="link" size="small" icon={<DownloadOutlined />} onClick={downloadCoxTemplate}>Cox 模板</Button>
+        </Space>
         {columns.length > 0 && <Text type="secondary">已读取 {records.length} 行：{columns.join('、')}</Text>}
 
         {columns.length > 0 && (
