@@ -43,6 +43,7 @@ export const geneMutation: HeatmapConfig = {
     { key: 'wild', label: '野生型', color: '#d9d9d9' },
   ],
   colMarkers: [],
+  rowMarkers: [],
   showValueLabel: false,
 }
 
@@ -64,6 +65,7 @@ export const drugSensitivity: HeatmapConfig = {
   colorRange: { min: 0, max: 10, colors: ['#52c41a', '#fffbe6', '#cf1322'] },
   categories: [],
   colMarkers: [],
+  rowMarkers: [],
   showValueLabel: true,
 }
 
@@ -88,6 +90,7 @@ export const tempTimeline: HeatmapConfig = {
   colorRange: { min: 36.5, max: 40, colors: ['#ffffff', '#ffccc7', '#cf1322'] },
   categories: [],
   colMarkers: [{ id: 'm1', colId: 'c2', label: '换用碳青霉烯', color: '#000' }],
+  rowMarkers: [],
   showValueLabel: true,
 }
 

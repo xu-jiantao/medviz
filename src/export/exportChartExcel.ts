@@ -1,4 +1,4 @@
-import { downloadSheet, type Aoa } from '@/data/templates'
+import { downloadSheet, downloadWorkbook, type Aoa } from '@/data/templates'
 import { useTrendStore } from '@/store/trendStore'
 import { useRadarStore } from '@/store/radarStore'
 import { useHeatmapStore } from '@/store/heatmapStore'
@@ -140,7 +140,29 @@ export function exportCurrentChartExcel(view: ViewKey) {
     [],
   ]
   const filename = `${title}.xlsx`
-  downloadSheet(filename, [...header, ...aoa])
+
+  if (view === 'heatmap') {
+    const config = useHeatmapStore.getState().config
+    const mainAoa = [...header, ...aoa]
+    const markerAoa: Aoa = [
+      ['类型', '目标名称 (行名或列名)', '标记标签'],
+    ]
+    config.colMarkers.forEach((m) => {
+      const col = config.cols.find((c) => c.id === m.colId)
+      if (col) markerAoa.push(['列标记线', col.name, m.label])
+    })
+    const rowMarkers = config.rowMarkers ?? []
+    rowMarkers.forEach((m) => {
+      const row = config.rows.find((r) => r.id === m.rowId)
+      if (row) markerAoa.push(['行标记线', row.name, m.label])
+    })
+    downloadWorkbook(filename, [
+      { name: '数据', aoa: mainAoa },
+      { name: '标记线配置', aoa: markerAoa },
+    ])
+  } else {
+    downloadSheet(filename, [...header, ...aoa])
+  }
   
   const path = getDownloadsPath(filename)
   message.success({
@@ -149,12 +171,27 @@ export function exportCurrentChartExcel(view: ViewKey) {
   })
 }
 
-/** 下载与当前图界面结构对应的模板（表头取自当前 config，可清空数值后填新数据） */
+/** 下载与当前图界面结构对应的模板（表头取自当前 config，可清空示例数值） */
 export function downloadCurrentTemplate(view: ViewKey) {
   const { title, aoa } = currentChartAoa(view)
   const tip: Aoa = [['填表说明：第一行为表头，请按表头格式填入你的数据（可清空示例数值）'], []]
   const filename = `${title}_导入模板.xlsx`
-  downloadSheet(filename, [...tip, ...aoa])
+
+  if (view === 'heatmap') {
+    const config = useHeatmapStore.getState().config
+    const mainAoa = [...tip, ...aoa]
+    const markerAoa: Aoa = [
+      ['类型', '目标名称 (行名或列名)', '标记标签'],
+      ['列标记线', config.cols[0]?.name ?? '示例列', '示例列标记文字'],
+      ['行标记线', config.rows[0]?.name ?? '示例行', '示例行标记文字'],
+    ]
+    downloadWorkbook(filename, [
+      { name: '数据', aoa: mainAoa },
+      { name: '标记线配置', aoa: markerAoa },
+    ])
+  } else {
+    downloadSheet(filename, [...tip, ...aoa])
+  }
 
   const path = getDownloadsPath(filename)
   message.success({

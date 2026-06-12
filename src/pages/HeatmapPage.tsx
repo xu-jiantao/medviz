@@ -38,9 +38,16 @@ export default function HeatmapPage() {
     showUploadList: false,
     beforeUpload: async (file) => {
       try {
-        const { rows, cols, cells } = await importHeatmapExcel(file as File)
-        s.patch({ rows, cols, cells, colMarkers: [], rowMarkers: [] })
-        message.success(`已导入 ${rows.length} 行 × ${cols.length} 列并已重置标记线`)
+        const { rows, cols, cells, colMarkers, rowMarkers } = await importHeatmapExcel(file as File)
+        s.patch({
+          rows,
+          cols,
+          cells,
+          colMarkers: colMarkers ?? [],
+          rowMarkers: rowMarkers ?? []
+        })
+        const hasMarkers = (colMarkers && colMarkers.length > 0) || (rowMarkers && rowMarkers.length > 0)
+        message.success(`已导入 ${rows.length} 行 × ${cols.length} 列` + (hasMarkers ? '并已自动恢复标记线' : '并已重置标记线'))
       } catch (e) {
         message.error((e as Error).message)
       }

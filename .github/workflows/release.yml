@@ -19,7 +19,7 @@ jobs:
       matrix:
         include:
           # macOS：Apple 芯片原生包（含内置 Python 后端）
-          - platform: macos-latest
+          - platform: macos-14
           # Windows：x64 的 .msi / .exe（含内置 Python 后端）
           - platform: windows-latest
 
@@ -79,6 +79,7 @@ jobs:
           # 更新器签名私钥（需在仓库 Settings → Secrets 添加）
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          CI: true
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'MedViz ${{ github.ref_name }}'

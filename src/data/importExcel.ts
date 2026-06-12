@@ -1,14 +1,64 @@
 import * as XLSX from 'xlsx'
 import type { TrendSeries } from '@/charts/TrendChart/types'
 import type { RadarDimension, RadarSeries } from '@/charts/RadarChart/types'
-import type { HeatAxisItem, HeatmapConfig } from '@/charts/Heatmap/types'
+import type { HeatAxisItem, HeatmapConfig, HeatColMarker, HeatRowMarker } from '@/charts/Heatmap/types'
 
 const PALETTE = ['#d4380d', '#1677ff', '#fa8c16', '#52c41a', '#722ed1', '#13c2c2', '#eb2f96']
 
-function readFirstSheet(buf: ArrayBuffer): Record<string, unknown>[] {
-  const wb = XLSX.read(buf, { type: 'array' })
-  const ws = wb.Sheets[wb.SheetNames[0]]
-  return XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: null })
+
+/**
+ * 智能解析 Excel 工作表，自动跳过空行、填表说明提示行、以及导出的患者信息抬头等非数据行。
+ * 返回清洗后的表头行和数据行数组。
+ */
+function parseSheetToAoaWithoutHeaders(ws: XLSX.WorkSheet): { headers: string[]; dataRows: any[][] } {
+  const rawAoa = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, defval: '' })
+  
+  let headerIndex = -1
+  for (let i = 0; i < rawAoa.length; i++) {
+    const row = rawAoa[i]
+    if (!row || row.length === 0) continue
+    const firstCell = String(row[0] ?? '').trim()
+    if (
+      firstCell === '' ||
+      firstCell.startsWith('填表说明') ||
+      firstCell.startsWith('患者：') ||
+      firstCell.startsWith('诊断：') ||
+      firstCell.startsWith('图表：') ||
+      firstCell.startsWith('说明：')
+    ) {
+      continue
+    }
+    headerIndex = i
+    break
+  }
+  
+  if (headerIndex === -1) {
+    throw new Error('未找到有效的表头行')
+  }
+  
+  const headers = rawAoa[headerIndex].map(x => String(x ?? '').trim()).filter(Boolean)
+  const dataRows: any[][] = []
+  
+  for (let i = headerIndex + 1; i < rawAoa.length; i++) {
+    const row = rawAoa[i]
+    if (!row || row.length === 0) continue
+    // 如果整行都是空的，则跳过
+    if (row.every(cell => String(cell ?? '').trim() === '')) continue
+    // 遇到新的说明或抬头行，跳过
+    const firstCell = String(row[0] ?? '').trim()
+    if (
+      firstCell.startsWith('填表说明') ||
+      firstCell.startsWith('患者：') ||
+      firstCell.startsWith('诊断：') ||
+      firstCell.startsWith('图表：') ||
+      firstCell.startsWith('说明：')
+    ) {
+      continue
+    }
+    dataRows.push(row)
+  }
+  
+  return { headers, dataRows }
 }
 
 /** 通用：把 CSV/Excel 解析成列名 + 记录数组（用于列线图自动拟合） */
@@ -17,9 +67,20 @@ export async function parseRecords(file: File): Promise<{
   records: Record<string, unknown>[]
 }> {
   const buf = await file.arrayBuffer()
-  const records = readFirstSheet(buf)
-  const columns = records.length ? Object.keys(records[0]) : []
-  return { columns, records }
+  const wb = XLSX.read(buf, { type: 'array' })
+  const ws = wb.Sheets[wb.SheetNames[0]]
+  
+  const { headers, dataRows } = parseSheetToAoaWithoutHeaders(ws)
+  
+  const records = dataRows.map((row) => {
+    const rec: Record<string, unknown> = {}
+    headers.forEach((h, idx) => {
+      rec[h] = row[idx] === '' ? null : row[idx]
+    })
+    return rec
+  })
+  
+  return { columns: headers, records }
 }
 
 /**
@@ -33,22 +94,25 @@ export async function importTrendExcel(file: File): Promise<{
   series: TrendSeries[]
 }> {
   const buf = await file.arrayBuffer()
-  const rows = readFirstSheet(buf)
-  if (rows.length === 0) throw new Error('表格为空')
-
-  const headers = Object.keys(rows[0])
+  const wb = XLSX.read(buf, { type: 'array' })
+  const ws = wb.Sheets[wb.SheetNames[0]]
+  
+  const { headers, dataRows } = parseSheetToAoaWithoutHeaders(ws)
   if (headers.length < 2) throw new Error('至少需要两列：第一列时间点 + 一列指标')
 
   const [xKey, ...metricKeys] = headers
-  const series: TrendSeries[] = metricKeys.map((key, i) => ({
-    id: `s_${i}_${key}`,
-    name: String(key),
-    color: PALETTE[i % PALETTE.length],
-    data: rows.map((r) => ({
-      x: String(r[xKey] ?? ''),
-      y: r[key] == null || r[key] === '' ? null : Number(r[key]),
-    })),
-  }))
+  const series: TrendSeries[] = metricKeys.map((key, i) => {
+    const colIdx = headers.indexOf(key)
+    return {
+      id: `s_${i}_${key}`,
+      name: String(key),
+      color: PALETTE[i % PALETTE.length],
+      data: dataRows.map((row) => ({
+        x: String(row[0] ?? ''),
+        y: row[colIdx] == null || String(row[colIdx]).trim() === '' ? null : Number(row[colIdx]),
+      })),
+    }
+  })
 
   return { xAxisName: String(xKey), series }
 }
@@ -66,34 +130,45 @@ export async function importRadarExcel(file: File): Promise<{
   series: RadarSeries[]
 }> {
   const buf = await file.arrayBuffer()
-  const rows = readFirstSheet(buf)
-  if (rows.length === 0) throw new Error('表格为空')
-
-  const headers = Object.keys(rows[0])
+  const wb = XLSX.read(buf, { type: 'array' })
+  const ws = wb.Sheets[wb.SheetNames[0]]
+  
+  const { headers, dataRows } = parseSheetToAoaWithoutHeaders(ws)
   if (headers.length < 2) throw new Error('至少需要两列：第一列维度 + 一列数据')
 
-  const dimKey = headers[0]
   const maxKey = headers.find((h) => MAX_HEADERS.includes(h))
   const seriesKeys = headers.slice(1).filter((h) => h !== maxKey)
+  
+  const maxColIdx = maxKey ? headers.indexOf(maxKey) : -1
 
-  const dimensions: RadarDimension[] = rows.map((r, i) => {
-    const explicitMax = maxKey ? Number(r[maxKey]) : NaN
-    const autoMax = Math.max(...seriesKeys.map((k) => Number(r[k]) || 0)) * 1.2 || 1
+  const dimensions: RadarDimension[] = dataRows.map((row, i) => {
+    const explicitMax = maxColIdx !== -1 ? Number(row[maxColIdx]) : NaN
+    
+    // 从其他数据列计算自动上限
+    const seriesValList = seriesKeys.map(k => {
+      const idx = headers.indexOf(k)
+      return Number(row[idx]) || 0
+    })
+    const autoMax = Math.max(...seriesValList) * 1.2 || 1
+    
     return {
       id: `d_${i}`,
-      name: String(r[dimKey] ?? `维度${i + 1}`),
+      name: String(row[0] ?? `维度${i + 1}`),
       max: Number.isFinite(explicitMax) && explicitMax > 0 ? explicitMax : Math.ceil(autoMax),
     }
   })
 
-  const series: RadarSeries[] = seriesKeys.map((key, si) => ({
-    id: `rs_${si}`,
-    name: String(key),
-    color: PALETTE[si % PALETTE.length],
-    values: Object.fromEntries(
-      rows.map((r, i) => [`d_${i}`, r[key] == null ? 0 : Number(r[key])]),
-    ),
-  }))
+  const series: RadarSeries[] = seriesKeys.map((key, si) => {
+    const colIdx = headers.indexOf(key)
+    return {
+      id: `rs_${si}`,
+      name: String(key),
+      color: PALETTE[si % PALETTE.length],
+      values: Object.fromEntries(
+        dataRows.map((row, i) => [`d_${i}`, row[colIdx] == null || String(row[colIdx]).trim() === '' ? 0 : Number(row[colIdx])]),
+      ),
+    }
+  })
 
   return { dimensions, series }
 }
@@ -108,29 +183,79 @@ export async function importHeatmapExcel(file: File): Promise<{
   rows: HeatAxisItem[]
   cols: HeatAxisItem[]
   cells: HeatmapConfig['cells']
+  colMarkers?: HeatColMarker[]
+  rowMarkers?: HeatRowMarker[]
 }> {
   const buf = await file.arrayBuffer()
-  const raw = readFirstSheet(buf)
-  if (raw.length === 0) throw new Error('表格为空')
-
-  const headers = Object.keys(raw[0])
+  const wb = XLSX.read(buf, { type: 'array' })
+  const ws = wb.Sheets[wb.SheetNames[0]]
+  
+  const { headers, dataRows } = parseSheetToAoaWithoutHeaders(ws)
   if (headers.length < 2) throw new Error('至少需要两列：第一列行名 + 一列数据')
 
-  const rowKey = headers[0]
   const colNames = headers.slice(1)
-  const rows: HeatAxisItem[] = raw.map((r, i) => ({ id: `r${i}`, name: String(r[rowKey] ?? `行${i + 1}`) }))
+  const rows: HeatAxisItem[] = dataRows.map((row, i) => ({ id: `r${i}`, name: String(row[0] ?? `行${i + 1}`) }))
   const cols: HeatAxisItem[] = colNames.map((n, i) => ({ id: `c${i}`, name: String(n) }))
 
   const cells: HeatmapConfig['cells'] = {}
-  raw.forEach((r, ri) => {
-    cells[`r${ri}`] = {}
+  dataRows.forEach((row, ri) => {
+    const rowId = `r${ri}`
+    cells[rowId] = {}
     colNames.forEach((cn, ci) => {
-      const v = r[cn]
+      const colIdx = headers.indexOf(cn)
+      const v = row[colIdx]
       // 数字串转数字，其余保留为分类文本
-      const num = v == null || v === '' ? null : Number(v)
-      cells[`r${ri}`][`c${ci}`] = num != null && !Number.isNaN(num) ? num : (v == null ? null : String(v))
+      const num = v == null || String(v).trim() === '' ? null : Number(v)
+      cells[rowId][`c${ci}`] = num != null && !Number.isNaN(num) ? num : (v == null || String(v).trim() === '' ? null : String(v))
     })
   })
 
-  return { rows, cols, cells }
+  // 读取第二张 Sheet (标记线配置) 还原标记线
+  const colMarkers: HeatColMarker[] = []
+  const rowMarkers: HeatRowMarker[] = []
+  
+  const markerSheetName = wb.SheetNames.find(n => n.includes('标记线'))
+  if (markerSheetName) {
+    const markerWs = wb.Sheets[markerSheetName]
+    const markerRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(markerWs, { defval: null })
+    
+    markerRows.forEach((r, idx) => {
+      const keys = Object.keys(r)
+      if (keys.length < 3) return
+      
+      const typeKey = keys.find(k => k.includes('类型')) ?? keys[0]
+      const targetKey = keys.find(k => k.includes('目标') || k.includes('名称')) ?? keys[1]
+      const labelKey = keys.find(k => k.includes('标签')) ?? keys[2]
+      
+      const typeVal = String(r[typeKey] ?? '').trim()
+      const targetVal = String(r[targetKey] ?? '').trim()
+      const labelVal = String(r[labelKey] ?? '').trim()
+      
+      if (typeVal && targetVal && labelVal) {
+        if (typeVal.includes('列')) {
+          const col = cols.find(c => c.name === targetVal)
+          if (col) {
+            colMarkers.push({
+              id: `m_col_${idx}`,
+              colId: col.id,
+              label: labelVal,
+              color: '#000'
+            })
+          }
+        } else if (typeVal.includes('行')) {
+          const row = rows.find(r => r.name === targetVal)
+          if (row) {
+            rowMarkers.push({
+              id: `m_row_${idx}`,
+              rowId: row.id,
+              label: labelVal,
+              color: '#000'
+            })
+          }
+        }
+      }
+    })
+  }
+
+  return { rows, cols, cells, colMarkers, rowMarkers }
 }
