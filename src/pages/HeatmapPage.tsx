@@ -13,7 +13,7 @@ import { useHeatmapStore } from '@/store/heatmapStore'
 import { useNavStore } from '@/store/navStore'
 import ClinicalCard from '@/components/ClinicalCard'
 import { importHeatmapExcel } from '@/data/importExcel'
-import { downloadHeatmapTemplate } from '@/data/templates'
+import { downloadCurrentTemplate, exportCurrentChartExcel } from '@/export/exportChartExcel'
 
 const { Text } = Typography
 const uid = () => Math.random().toString(36).slice(2, 9)
@@ -90,7 +90,7 @@ export default function HeatmapPage() {
     <Row gutter={16}>
       <Col flex="auto">
         <div className="medviz-chart-card">
-          <Heatmap config={config} />
+          <Heatmap config={config} onExportExcel={() => exportCurrentChartExcel('heatmap')} />
         </div>
         <Card size="small" title="数据矩阵（行 × 列）" style={{ marginTop: 16 }}>
           <Table
@@ -114,7 +114,7 @@ export default function HeatmapPage() {
           </Upload>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
             <Text type="secondary" style={{ fontSize: 12 }}>首列行名，表头为列名，单元格为数值/分类</Text>
-            <Button type="link" size="small" icon={<DownloadOutlined />} style={{ padding: 0 }} onClick={downloadHeatmapTemplate}>
+            <Button type="link" size="small" icon={<DownloadOutlined />} style={{ padding: 0 }} onClick={() => downloadCurrentTemplate('heatmap')}>
               下载模板
             </Button>
           </div>

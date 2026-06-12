@@ -11,7 +11,7 @@ import { useRadarStore } from '@/store/radarStore'
 import { useNavStore } from '@/store/navStore'
 import ClinicalCard from '@/components/ClinicalCard'
 import { importRadarExcel } from '@/data/importExcel'
-import { downloadRadarTemplate } from '@/data/templates'
+import { downloadCurrentTemplate, exportCurrentChartExcel } from '@/export/exportChartExcel'
 
 const { Text } = Typography
 const uid = () => Math.random().toString(36).slice(2, 9)
@@ -86,7 +86,7 @@ export default function RadarPage() {
     <Row gutter={16}>
       <Col flex="auto">
         <div className="medviz-chart-card">
-          <RadarChart config={config} />
+          <RadarChart config={config} onExportExcel={() => exportCurrentChartExcel('radar')} />
         </div>
         <Card size="small" title="数据矩阵（维度 × 组别）" style={{ marginTop: 16 }}>
           <Table
@@ -114,7 +114,7 @@ export default function RadarPage() {
           </Upload>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
             <Text type="secondary" style={{ fontSize: 12 }}>首列维度，「满分」列为量程，其余每列一组</Text>
-            <Button type="link" size="small" icon={<DownloadOutlined />} style={{ padding: 0 }} onClick={downloadRadarTemplate}>
+            <Button type="link" size="small" icon={<DownloadOutlined />} style={{ padding: 0 }} onClick={() => downloadCurrentTemplate('radar')}>
               下载模板
             </Button>
           </div>

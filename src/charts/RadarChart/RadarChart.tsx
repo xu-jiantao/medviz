@@ -2,14 +2,16 @@ import { useMemo } from 'react'
 import ReactECharts from 'echarts-for-react'
 import type { RadarChartConfig } from './types'
 import { buildRadarOption } from './buildOption'
+import { withExcelToolbox } from '../excelToolbox'
 
 interface Props {
   config: RadarChartConfig
   height?: number
+  onExportExcel?: () => void
 }
 
-export default function RadarChart({ config, height = 460 }: Props) {
-  const option = useMemo(() => buildRadarOption(config), [config])
+export default function RadarChart({ config, height = 460, onExportExcel }: Props) {
+  const option = useMemo(() => withExcelToolbox(buildRadarOption(config), onExportExcel), [config, onExportExcel])
   return (
     <ReactECharts
       option={option}

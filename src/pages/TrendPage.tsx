@@ -9,7 +9,7 @@ import { useTrendStore } from '@/store/trendStore'
 import { useNavStore } from '@/store/navStore'
 import ClinicalCard from '@/components/ClinicalCard'
 import { importTrendExcel } from '@/data/importExcel'
-import { downloadTrendTemplate } from '@/data/templates'
+import { downloadCurrentTemplate, exportCurrentChartExcel } from '@/export/exportChartExcel'
 
 const { Text } = Typography
 const uid = () => Math.random().toString(36).slice(2, 9)
@@ -39,7 +39,7 @@ export default function TrendPage() {
     <Row gutter={16}>
       <Col flex="auto">
         <div className="medviz-chart-card">
-          <TrendChart config={config} />
+          <TrendChart config={config} onExportExcel={() => exportCurrentChartExcel('trend')} />
         </div>
       </Col>
 
@@ -53,7 +53,7 @@ export default function TrendPage() {
           </Upload>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
             <Text type="secondary" style={{ fontSize: 12 }}>格式：首列时间点，其余每列一个指标</Text>
-            <Button type="link" size="small" icon={<DownloadOutlined />} style={{ padding: 0 }} onClick={downloadTrendTemplate}>
+            <Button type="link" size="small" icon={<DownloadOutlined />} style={{ padding: 0 }} onClick={() => downloadCurrentTemplate('trend')}>
               下载模板
             </Button>
           </div>
