@@ -22,6 +22,14 @@ export interface HeatColMarker {
   color?: string
 }
 
+/** 行标记线 */
+export interface HeatRowMarker {
+  id: string
+  rowId: string
+  label: string
+  color?: string
+}
+
 export interface HeatmapConfig {
   title: string
   mode: HeatmapMode
@@ -36,7 +44,9 @@ export interface HeatmapConfig {
   categories: HeatCategory[]
 
   colMarkers: HeatColMarker[]
+  rowMarkers?: HeatRowMarker[]
   showValueLabel?: boolean
+  showClustering?: boolean
 }
 
 /** 内置连续配色方案 */

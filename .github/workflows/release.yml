@@ -82,6 +82,6 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'MedViz ${{ github.ref_name }}'
-          releaseBody: '医学数据可视化工具桌面版（已内置统计拟合后端 + 注册登录）。Mac 用户下载 .dmg，Windows 用户下载 .msi 或 .exe。'
+          releaseBody: '医学数据可视化工具桌面版。Mac 用户下载 .dmg，Windows 用户下载 .msi 或 .exe。'
           releaseDraft: false
           prerelease: false

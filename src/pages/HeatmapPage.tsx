@@ -154,9 +154,15 @@ export default function HeatmapPage() {
               options={[{ label: '连续数值', value: 'continuous' }, { label: '分类色块', value: 'categorical' }]}
             />
           </div>
-          <Space style={{ marginTop: 10 }} size={4}>
-            <Switch size="small" checked={config.showValueLabel} onChange={(v) => s.patch({ showValueLabel: v })} />
-            <Text>显示数值标签</Text>
+          <Space style={{ marginTop: 10 }} size={16}>
+            <Space size={4}>
+              <Switch size="small" checked={config.showValueLabel} onChange={(v) => s.patch({ showValueLabel: v })} />
+              <Text>显示数值标签</Text>
+            </Space>
+            <Space size={4}>
+              <Switch size="small" checked={config.showClustering} onChange={(v) => s.patch({ showClustering: v })} />
+              <Text>开启聚类分析</Text>
+            </Space>
           </Space>
 
           {!isCat && (
@@ -224,8 +230,25 @@ export default function HeatmapPage() {
               </Space.Compact>
             ))}
             <MarkerAdder
-              cols={config.cols}
+              items={config.cols}
+              placeholder="列"
               onAdd={(colId, label) => s.addColMarker({ id: uid(), colId, label, color: '#000' })}
+            />
+          </Space>
+
+          <Divider style={{ margin: '12px 0' }} orientation="left">行标记线</Divider>
+          <Space direction="vertical" style={{ width: '100%' }} size={6}>
+            {(config.rowMarkers ?? []).map((m) => (
+              <Space.Compact key={m.id} style={{ width: '100%' }}>
+                <Input size="small" disabled value={config.rows.find((r) => r.id === m.rowId)?.name} style={{ width: 90 }} />
+                <Input size="small" value={m.label} disabled />
+                <Button size="small" danger icon={<DeleteOutlined />} onClick={() => s.removeRowMarker(m.id)} />
+              </Space.Compact>
+            ))}
+            <MarkerAdder
+              items={config.rows}
+              placeholder="行"
+              onAdd={(rowId, label) => s.addRowMarker({ id: uid(), rowId, label, color: '#000' })}
             />
           </Space>
         </Card>
@@ -234,24 +257,30 @@ export default function HeatmapPage() {
   )
 }
 
-function MarkerAdder({ cols, onAdd }: { cols: HeatAxisItem[]; onAdd: (colId: string, label: string) => void }) {
-  const [colId, setColId] = useState<string>()
+function MarkerAdder({
+  items, placeholder, onAdd,
+}: {
+  items: HeatAxisItem[]
+  placeholder: string
+  onAdd: (id: string, label: string) => void
+}) {
+  const [itemId, setItemId] = useState<string>()
   const [label, setLabel] = useState('')
   return (
     <Space.Compact style={{ width: '100%' }}>
       <Select
-        size="small" placeholder="列" style={{ width: 90 }}
-        value={colId}
-        options={cols.map((c) => ({ label: c.name, value: c.id }))}
-        onChange={setColId}
+        size="small" placeholder={placeholder} style={{ width: 90 }}
+        value={itemId}
+        options={items.map((c) => ({ label: c.name, value: c.id }))}
+        onChange={setItemId}
       />
       <Input size="small" placeholder="标签" value={label} onChange={(e) => setLabel(e.target.value)} />
       <Button
         size="small" icon={<PlusOutlined />}
         onClick={() => {
-          if (colId && label) {
-            onAdd(colId, label)
-            setColId(undefined)
+          if (itemId && label) {
+            onAdd(itemId, label)
+            setItemId(undefined)
             setLabel('')
           }
         }}

@@ -4,13 +4,16 @@ import type { RadarChartConfig } from './types'
 export function buildRadarOption(config: RadarChartConfig): EChartsOption {
   const indicator = config.dimensions.map((d) => ({ name: d.name, max: d.max }))
 
-  const data = config.series.map((s) => ({
-    name: s.name,
-    value: config.dimensions.map((d) => s.values[d.id] ?? 0),
-    itemStyle: { color: s.color },
-    lineStyle: { color: s.color, width: 2 },
-    areaStyle: config.fill ? { color: s.color, opacity: 0.15 } : undefined,
-  }))
+  const data = config.series.map((s) => {
+    const totalScore = config.dimensions.reduce((sum, d) => sum + (s.values[d.id] ?? 0), 0)
+    return {
+      name: `${s.name} (${totalScore}分)`,
+      value: config.dimensions.map((d) => s.values[d.id] ?? 0),
+      itemStyle: { color: s.color },
+      lineStyle: { color: s.color, width: 2 },
+      areaStyle: config.fill ? { color: s.color, opacity: 0.15 } : undefined,
+    }
+  })
 
   return {
     title: { text: config.title, left: 'center', textStyle: { fontSize: 16 } },

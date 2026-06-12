@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { HeatmapConfig, HeatCategory, HeatColMarker } from '@/charts/Heatmap/types'
+import type { HeatmapConfig, HeatCategory, HeatColMarker, HeatRowMarker } from '@/charts/Heatmap/types'
 import { geneMutation } from '@/charts/Heatmap/samples'
 
 interface HeatmapState {
@@ -18,6 +18,8 @@ interface HeatmapState {
   updateCategory: (key: string, p: Partial<HeatCategory>) => void
   addColMarker: (m: HeatColMarker) => void
   removeColMarker: (id: string) => void
+  addRowMarker: (m: HeatRowMarker) => void
+  removeRowMarker: (id: string) => void
 }
 
 const init = (): HeatmapConfig => JSON.parse(JSON.stringify(geneMutation))
@@ -99,5 +101,11 @@ export const useHeatmapStore = create<HeatmapState>((set) => ({
   removeColMarker: (id) =>
     set((s) => ({
       config: { ...s.config, colMarkers: s.config.colMarkers.filter((m) => m.id !== id) },
+    })),
+  addRowMarker: (m) =>
+    set((s) => ({ config: { ...s.config, rowMarkers: [...(s.config.rowMarkers ?? []), m] } })),
+  removeRowMarker: (id) =>
+    set((s) => ({
+      config: { ...s.config, rowMarkers: (s.config.rowMarkers ?? []).filter((m) => m.id !== id) },
     })),
 }))

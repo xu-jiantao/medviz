@@ -1,7 +1,7 @@
 {
   "name": "medviz",
   "private": true,
-  "version": "0.6.1",
+  "version": "0.6.2",
   "type": "module",
   "description": "医学数据可视化工具：趋势图 / 雷达图 / 热图 / 列线图",
   "scripts": {
