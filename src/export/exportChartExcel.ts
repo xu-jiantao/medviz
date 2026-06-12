@@ -14,8 +14,18 @@ import { trendSamples } from '@/charts/TrendChart/samples'
 import { radarSamples } from '@/charts/RadarChart/samples'
 import { heatmapSamples } from '@/charts/Heatmap/samples'
 import { nomogramSamples } from '@/charts/Nomogram/samples'
+import { message } from 'antd'
 
 // ---- 各图：config → 数据表（纯函数，可作用于任意 config，供导出/模板/汇总复用）----
+
+function getDownloadsPath(filename: string): string {
+  const isMac = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('mac')
+  if (isMac) {
+    return `~/Downloads/${filename}`
+  } else {
+    return `Downloads\\${filename} (或 C:\\Users\\<用户名>\\Downloads\\${filename})`
+  }
+}
 
 export function trendAoa(c: TrendChartConfig): { title: string; aoa: Aoa } {
   const cats: (string | number)[] = []
@@ -129,12 +139,26 @@ export function exportCurrentChartExcel(view: ViewKey) {
     [`图表：${title}`, `导出：${new Date().toLocaleString('zh-CN')}`],
     [],
   ]
-  downloadSheet(`${title}.xlsx`, [...header, ...aoa])
+  const filename = `${title}.xlsx`
+  downloadSheet(filename, [...header, ...aoa])
+  
+  const path = getDownloadsPath(filename)
+  message.success({
+    content: `导出成功！已保存至：${path}`,
+    duration: 5,
+  })
 }
 
 /** 下载与当前图界面结构对应的模板（表头取自当前 config，可清空数值后填新数据） */
 export function downloadCurrentTemplate(view: ViewKey) {
   const { title, aoa } = currentChartAoa(view)
   const tip: Aoa = [['填表说明：第一行为表头，请按表头格式填入你的数据（可清空示例数值）'], []]
-  downloadSheet(`${title}_导入模板.xlsx`, [...tip, ...aoa])
+  const filename = `${title}_导入模板.xlsx`
+  downloadSheet(filename, [...tip, ...aoa])
+
+  const path = getDownloadsPath(filename)
+  message.success({
+    content: `下载成功！已保存至：${path}`,
+    duration: 5,
+  })
 }

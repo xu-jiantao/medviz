@@ -101,8 +101,11 @@ export default function AggregatePage() {
       sheets.push({ name: sheetName, aoa })
     }
 
-    downloadWorkbook(`全部用户病人数据汇总.xlsx`, sheets)
-    message.success(`已导出 ${rows.length} 个用户 × ${allScenarios.length} 种图表数据`)
+    const filename = `全部用户病人数据汇总.xlsx`
+    downloadWorkbook(filename, sheets)
+    const isMac = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('mac')
+    const path = isMac ? `~/Downloads/${filename}` : `Downloads\\${filename}`
+    message.success(`已导出 ${rows.length} 个用户 × ${allScenarios.length} 种图表数据，已保存至：${path}`)
   }
 
   return (

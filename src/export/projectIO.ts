@@ -6,6 +6,7 @@ import type { TrendChartConfig } from '@/charts/TrendChart/types'
 import type { RadarChartConfig } from '@/charts/RadarChart/types'
 import type { HeatmapConfig } from '@/charts/Heatmap/types'
 import type { NomogramConfig } from '@/charts/Nomogram/types'
+import { message } from 'antd'
 
 const FORMAT = 'medviz-project'
 const VERSION = 1
@@ -49,10 +50,18 @@ export function saveProjectFile() {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   const stamp = new Date().toISOString().slice(0, 10)
+  const filename = `medviz-项目-${stamp}.json`
   a.href = url
-  a.download = `medviz-项目-${stamp}.json`
+  a.download = filename
   a.click()
   URL.revokeObjectURL(url)
+
+  const isMac = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('mac')
+  const path = isMac ? `~/Downloads/${filename}` : `Downloads\\${filename}`
+  message.success({
+    content: `保存项目文件成功！已保存至：${path}`,
+    duration: 5,
+  })
 }
 
 /** 读取并应用一个项目文件 */
