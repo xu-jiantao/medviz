@@ -7,6 +7,7 @@ import { listProjects } from '@/auth/projects'
 import { downloadWorkbook, type Aoa } from '@/data/templates'
 import { chartAoaForScenario } from '@/export/exportChartExcel'
 import { NAV } from '@/nav'
+import { CLINICAL, type ClinicalNote } from '@/clinical'
 
 const { Title, Text } = Typography
 
@@ -81,6 +82,34 @@ export default function AggregatePage() {
     ]
     const sheets = [{ name: '用户汇总', aoa: summary }]
 
+    // Sheet 1.5：临床判断与建议汇总
+    const LEVEL_LABEL: Record<string, string> = { warning: '预警', info: '提示', success: '良好' }
+    const clinicalSummaryAoa: any[][] = [
+      ['用户名', '患者姓名', '图表类别', '应用场景', '预警级别', '临床判断结论', '应对建议']
+    ]
+    for (const u of rows) {
+      const ws = wsMap[u.username]
+      if (!ws) continue
+      const clinicalOverrides = (ws.clinicalOverrides as Record<string, ClinicalNote>) ?? {}
+      
+      NAV.forEach((cat) => {
+        cat.children.forEach((s) => {
+          const note = clinicalOverrides[s.sample] ?? CLINICAL[s.sample]
+          const levelStr = note ? (LEVEL_LABEL[note.level] ?? note.level) : '提示'
+          clinicalSummaryAoa.push([
+            u.username,
+            u.patientName,
+            cat.label,
+            s.label,
+            levelStr,
+            note?.conclusion ?? '无',
+            note?.advice ?? '无'
+          ])
+        })
+      })
+    }
+    sheets.push({ name: '临床判断与建议汇总', aoa: clinicalSummaryAoa })
+
     // Sheet 2~14：13个临床场景，每个场景一张表，纵向堆叠所有用户的该场景数据
     const allScenarios = NAV.flatMap((c) => c.children.map((s) => ({ ...s, catLabel: c.label })))
     for (const s of allScenarios) {
@@ -90,18 +119,34 @@ export default function AggregatePage() {
         if (!ws) continue
         const built = chartAoaForScenario(s, ws)
         if (!built) continue
+
+        const clinicalOverrides = (ws.clinicalOverrides as Record<string, ClinicalNote>) ?? {}
+        const note = clinicalOverrides[s.sample] ?? CLINICAL[s.sample]
+        const levelStr = note ? (LEVEL_LABEL[note.level] ?? note.level) : '提示'
+
         aoa.push(
           [],
           [`【用户名：${u.username} | 患者：${u.patientName} | 科室/床号：${u.bed} | 诊断：${u.diagnosis}】`],
+          ['图表标题', built.title ?? s.label],
+          ['临床判断', note?.conclusion ?? '无'],
+          ['预警级别', levelStr],
+          ['应对建议', note?.advice ?? '无'],
+          [],
           ...built.aoa
         )
       }
-      // 过滤 Excel 表名不允许的特殊字符（如 : \ / ? * [ ] 等），限制长度为 31
-      const sheetName = s.label.replace(/[\/\\?*:\[\]]/g, '_').slice(0, 31)
-      sheets.push({ name: sheetName, aoa })
+      sheets.push({ name: s.label.slice(0, 31), aoa })
     }
 
-    const filename = `全部用户病人数据汇总.xlsx`
+    const formatCompactDate = (date: Date): string => {
+      const y = date.getFullYear()
+      const m = String(date.getMonth() + 1).padStart(2, '0')
+      const d = String(date.getDate()).padStart(2, '0')
+      const hh = String(date.getHours()).padStart(2, '0')
+      const mm = String(date.getMinutes()).padStart(2, '0')
+      return `${y}${m}${d}${hh}${mm}`
+    }
+    const filename = `全部用户数据汇总_${formatCompactDate(new Date())}.xlsx`
     downloadWorkbook(filename, sheets)
     const isMac = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('mac')
     const path = isMac ? `~/Downloads/${filename}` : `Downloads\\${filename}`

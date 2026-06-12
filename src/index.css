@@ -35,3 +35,13 @@ body {
   height: 60vh;
   color: #999;
 }
+
+/* 患者选择下拉框白色字体与箭头 */
+.patient-select .ant-select-selection-item {
+  color: #fff !important;
+  font-weight: 600;
+}
+.patient-select .ant-select-arrow {
+  color: #bfbfbf !important;
+}
+

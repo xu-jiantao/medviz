@@ -38,8 +38,8 @@ export default function NomogramPage() {
   const total = totalPoints(config, selection)
 
   return (
-    <Row gutter={16}>
-      <Col flex="auto">
+    <Row gutter={16} wrap={false}>
+      <Col flex="auto" style={{ minWidth: 0 }}>
         <div className="medviz-chart-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span />

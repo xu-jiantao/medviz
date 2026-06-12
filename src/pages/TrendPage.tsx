@@ -35,7 +35,40 @@ export default function TrendPage() {
     beforeUpload: async (file) => {
       try {
         const { xAxisName, series } = await importTrendExcel(file as File)
-        patch({ xAxisName, series, eventMarkers: [], referenceLines: [], referenceBands: [] })
+        
+        // 判断是否导入了自定义指标以决定是否重置 Y 轴配置实现刻度自适应
+        const importedNames = series.map((s) => s.name)
+        const defaultNames = (config.series || []).map((s) => s.name)
+        const isCustom =
+          importedNames.length !== defaultNames.length ||
+          importedNames.some((name) => !defaultNames.includes(name))
+
+        let yAxes = config.yAxes
+        if (isCustom) {
+          const uniqueUnits = Array.from(new Set(series.map((s) => s.unit).filter(Boolean)))
+          let yAxisName = '数值'
+          if (series.length === 1) {
+            const s = series[0]
+            yAxisName = s.unit ? `${s.name} (${s.unit})` : s.name
+          } else if (uniqueUnits.length === 1) {
+            const names = series.map((s) => s.name).join('/')
+            yAxisName = `${names} (${uniqueUnits[0]})`
+          } else if (uniqueUnits.length > 1) {
+            yAxisName = `数值 (${uniqueUnits.join('/')})`
+          } else {
+            yAxisName = series.map((s) => s.name).join('/')
+          }
+          yAxes = [{ id: 'y', name: yAxisName }] // min 和 max 不指定（即为 undefined），以启用 ECharts 自适应刻度
+        }
+
+        patch({
+          xAxisName,
+          series,
+          yAxes,
+          eventMarkers: [],
+          referenceLines: [],
+          referenceBands: [],
+        })
         message.success(`已导入 ${series.length} 个指标`)
       } catch (e) {
         message.error((e as Error).message)
@@ -45,8 +78,8 @@ export default function TrendPage() {
   }
 
   return (
-    <Row gutter={16}>
-      <Col flex="auto">
+    <Row gutter={16} wrap={false}>
+      <Col flex="auto" style={{ minWidth: 0 }}>
         <div className="medviz-chart-card">
           <TrendChart config={config} onExportExcel={() => exportCurrentChartExcel('trend')} />
         </div>
@@ -87,9 +120,69 @@ export default function TrendPage() {
               <Text>横轴名称</Text>
               <Input value={config.xAxisName} onChange={(e) => patch({ xAxisName: e.target.value })} />
             </div>
+            <div>
+              <Text>Y轴范围 (当前主要指标)</Text>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <InputNumber
+                  placeholder="自动下限"
+                  value={config.yAxes[0]?.min}
+                  onChange={(val) => {
+                    const newYAxes = [...config.yAxes]
+                    if (newYAxes[0]) {
+                      newYAxes[0] = { ...newYAxes[0], min: val === null ? undefined : val }
+                      patch({ yAxes: newYAxes })
+                    }
+                  }}
+                  style={{ width: '100%' }}
+                />
+                <Text type="secondary">至</Text>
+                <InputNumber
+                  placeholder="自动上限"
+                  value={config.yAxes[0]?.max}
+                  onChange={(val) => {
+                    const newYAxes = [...config.yAxes]
+                    if (newYAxes[0]) {
+                      newYAxes[0] = { ...newYAxes[0], max: val === null ? undefined : val }
+                      patch({ yAxes: newYAxes })
+                    }
+                  }}
+                  style={{ width: '100%' }}
+                />
+              </div>
+            </div>
             <Space>
               <Switch checked={config.smooth} onChange={(v) => patch({ smooth: v })} />
               <Text>平滑曲线</Text>
+            </Space>
+            <Space>
+              <Switch
+                checked={config.series.length > 0 && config.series.every((s) => s.normalize)}
+                onChange={(checked) => {
+                  const newSeries = config.series.map(s => ({ ...s, normalize: checked }))
+                  
+                  let yAxes = [...config.yAxes]
+                  if (checked) {
+                    yAxes = [{ id: 'y', name: '归一化数值 (0~1)', min: 0, max: 1 }]
+                  } else {
+                    const uniqueUnits = Array.from(new Set(newSeries.map(s => s.unit).filter(Boolean)))
+                    let yAxisName = '数值'
+                    if (newSeries.length === 1) {
+                      yAxisName = newSeries[0].unit ? `${newSeries[0].name} (${newSeries[0].unit})` : newSeries[0].name
+                    } else if (uniqueUnits.length === 1) {
+                      const names = newSeries.map(s => s.name).join('/')
+                      yAxisName = `${names} (${uniqueUnits[0]})`
+                    } else if (uniqueUnits.length > 1) {
+                      yAxisName = `数值 (${uniqueUnits.join('/')})`
+                    } else {
+                      yAxisName = newSeries.map(s => s.name).join('/')
+                    }
+                    yAxes = [{ id: 'y', name: yAxisName, min: undefined, max: undefined }]
+                  }
+                  
+                  patch({ series: newSeries, yAxes })
+                }}
+              />
+              <Text>一键数值归一化 (0~1)</Text>
             </Space>
           </Space>
 

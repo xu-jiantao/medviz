@@ -30,15 +30,32 @@ function collectCategories(config: TrendChartConfig): Array<string | number> {
 export function buildTrendOption(config: TrendChartConfig): EChartsOption {
   const categories = collectCategories(config)
 
-  const yAxis = config.yAxes.map((y, i) => ({
-    type: 'value' as const,
-    name: y.name,
-    min: y.min,
-    max: y.max,
-    position: y.position ?? (i === 0 ? 'left' : 'right'),
-    nameTextStyle: { fontSize: 11 },
-    splitLine: { show: i === 0 },
-  }))
+  const allYValues = config.series.flatMap((s) => s.data.map((d) => d.y).filter((v): v is number => v != null))
+  const dataMin = allYValues.length > 0 ? Math.min(...allYValues) : null
+  const dataMax = allYValues.length > 0 ? Math.max(...allYValues) : null
+
+  const yAxis = config.yAxes.map((y, i) => {
+    let finalMin = y.min
+    let finalMax = y.max
+
+    if (finalMin != null && dataMin != null && dataMin < finalMin) {
+      finalMin = undefined
+    }
+    if (finalMax != null && dataMax != null && dataMax > finalMax) {
+      finalMax = undefined
+    }
+
+    return {
+      type: 'value' as const,
+      name: y.name,
+      min: finalMin,
+      max: finalMax,
+      scale: true,
+      position: y.position ?? (i === 0 ? 'left' : 'right'),
+      nameTextStyle: { fontSize: 11 },
+      splitLine: { show: i === 0 },
+    }
+  })
 
   const series: NonNullable<EChartsOption['series']> = config.series.map((s) => {
     const vals = seriesValues(s)
@@ -54,7 +71,14 @@ export function buildTrendOption(config: TrendChartConfig): EChartsOption {
       lineStyle: { color: s.color, width: 2 },
       data: categories.map((c) => {
         const idx = s.data.findIndex((d) => d.x === c)
-        return idx >= 0 ? vals[idx] : null
+        if (idx >= 0) {
+          return {
+            value: vals[idx] ?? null,
+            rawValue: s.data[idx].y ?? null,
+            unit: s.unit || '',
+          }
+        }
+        return null
       }),
     }
   })
@@ -98,7 +122,21 @@ export function buildTrendOption(config: TrendChartConfig): EChartsOption {
 
   return {
     title: { text: config.title, left: 'center', textStyle: { fontSize: 16 } },
-    tooltip: { trigger: 'axis' },
+    tooltip: {
+      trigger: 'axis',
+      formatter: (params: any) => {
+        let html = `${params[0].name}<br/>`
+        params.forEach((p: any) => {
+          if (p.value == null) return
+          const item = p.data
+          const rawVal = item && typeof item === 'object' && 'rawValue' in item ? item.rawValue : p.value
+          const unit = item && typeof item === 'object' && 'unit' in item ? item.unit : ''
+          const unitStr = unit ? ` ${unit}` : ''
+          html += `${p.marker}${p.seriesName}: <b>${rawVal}</b>${unitStr}<br/>`
+        })
+        return html
+      }
+    },
     legend: { top: 28, type: 'scroll' },
     grid: { top: 64, left: 56, right: 56, bottom: 48 },
     toolbox: {

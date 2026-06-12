@@ -63,16 +63,26 @@ export function heatmapAoa(c: HeatmapConfig): { title: string; aoa: Aoa } {
 }
 
 export function nomogramAoa(c: NomogramConfig, sel: NomogramSelection = {}): { title: string; aoa: Aoa } {
-  const aoa: Aoa = [['变量', '档位 / 取值', '分值']]
+  const aoa: Aoa = [['变量', '档位 / 取值', '分值', '患者当前选择 (分类变量填X，连续变量在首行填数值)']]
   for (const v of c.variables) {
-    if (v.type === 'categorical') for (const lv of v.levels ?? []) aoa.push([v.name, lv.label, lv.points])
-    else for (const a of v.valueAnchors ?? []) aoa.push([v.name, `${a.value}${v.unit ?? ''}`, a.points])
+    const activeVal = sel[v.id]
+    if (v.type === 'categorical') {
+      (v.levels ?? []).forEach((lv, idx) => {
+        const isSelected = activeVal === idx ? 'X' : ''
+        aoa.push([v.name, lv.label, lv.points, isSelected])
+      })
+    } else {
+      (v.valueAnchors ?? []).forEach((a, idx) => {
+        const valStr = idx === 0 && activeVal != null ? String(activeVal) : ''
+        aoa.push([v.name, `${a.value}${v.unit ?? ''}`, a.points, valStr])
+      })
+    }
   }
   const total = totalPoints(c, sel)
-  aoa.push([], ['当前总分', total.toFixed(0), ''], ['结局', '当前概率', '总分→概率锚点'])
+  aoa.push([], ['当前总分', total.toFixed(0), '', ''], ['结局', '当前概率', '总分→概率锚点', ''])
   for (const o of c.outcomes) {
     aoa.push([o.name, `${(outcomeProbability(o, total) * 100).toFixed(0)}%`,
-      o.anchors.map((a) => `${a.totalPoints}:${Math.round(a.prob * 100)}%`).join('  ')])
+      o.anchors.map((a) => `${a.totalPoints}:${Math.round(a.prob * 100)}%`).join('  '), ''])
   }
   return { title: c.title, aoa }
 }
@@ -139,7 +149,15 @@ export function exportCurrentChartExcel(view: ViewKey) {
     [`图表：${title}`, `导出：${new Date().toLocaleString('zh-CN')}`],
     [],
   ]
-  const filename = `${title}.xlsx`
+  const formatCompactDate = (date: Date): string => {
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const d = String(date.getDate()).padStart(2, '0')
+    const hh = String(date.getHours()).padStart(2, '0')
+    const mm = String(date.getMinutes()).padStart(2, '0')
+    return `${y}${m}${d}${hh}${mm}`
+  }
+  const filename = `${p.name}_${title}_${formatCompactDate(new Date())}.xlsx`
 
   if (view === 'heatmap') {
     const config = useHeatmapStore.getState().config

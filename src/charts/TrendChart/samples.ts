@@ -7,7 +7,7 @@ export const bpTrend: TrendChartConfig = {
   title: '高血压患者3年血压控制趋势',
   xAxisName: '随访时间',
   xAxisType: 'category',
-  yAxes: [{ id: 'y', name: '血压 (mmHg)', min: 60, max: 200 }],
+  yAxes: [{ id: 'y', name: '血压 (mmHg)', min: 0, max: 50 }],
   series: [
     {
       id: 'sbp',

@@ -52,7 +52,7 @@ export default function RadarPage() {
   // 矩阵表：行=维度，列=维度名/满分 + 每组一列 + 删除
   const columns: ColumnsType<RadarDimension> = [
     {
-      title: '维度', dataIndex: 'name', fixed: 'left', width: 150,
+      title: '指标', dataIndex: 'name', fixed: 'left', width: 150,
       render: (_, d) => (
         <Input
           size="small"
@@ -92,12 +92,12 @@ export default function RadarPage() {
   ]
 
   return (
-    <Row gutter={16}>
-      <Col flex="auto">
+    <Row gutter={16} wrap={false}>
+      <Col flex="auto" style={{ minWidth: 0 }}>
         <div className="medviz-chart-card">
           <RadarChart config={config} onExportExcel={() => exportCurrentChartExcel('radar')} />
         </div>
-        <Card size="small" title="数据矩阵（维度 × 组别）" style={{ marginTop: 16 }}>
+        <Card size="small" title="数据矩阵（指标 × 组别）" style={{ marginTop: 16 }}>
           <Table
             rowKey="id" size="small" pagination={false}
             scroll={{ x: 'max-content' }}

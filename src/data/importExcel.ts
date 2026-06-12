@@ -24,7 +24,14 @@ function parseSheetToAoaWithoutHeaders(ws: XLSX.WorkSheet): { headers: string[];
       firstCell.startsWith('患者：') ||
       firstCell.startsWith('诊断：') ||
       firstCell.startsWith('图表：') ||
-      firstCell.startsWith('说明：')
+      firstCell.startsWith('说明：') ||
+      firstCell.startsWith('临床判断') ||
+      firstCell.startsWith('预警级别') ||
+      firstCell.startsWith('应对建议') ||
+      firstCell.startsWith('图表标题') ||
+      firstCell.startsWith('【') ||
+      firstCell.includes('用户名：') ||
+      firstCell.includes('数据汇总')
     ) {
       continue
     }
@@ -51,7 +58,14 @@ function parseSheetToAoaWithoutHeaders(ws: XLSX.WorkSheet): { headers: string[];
       firstCell.startsWith('患者：') ||
       firstCell.startsWith('诊断：') ||
       firstCell.startsWith('图表：') ||
-      firstCell.startsWith('说明：')
+      firstCell.startsWith('说明：') ||
+      firstCell.startsWith('临床判断') ||
+      firstCell.startsWith('预警级别') ||
+      firstCell.startsWith('应对建议') ||
+      firstCell.startsWith('图表标题') ||
+      firstCell.startsWith('【') ||
+      firstCell.includes('用户名：') ||
+      firstCell.includes('数据汇总')
     ) {
       continue
     }
@@ -103,9 +117,18 @@ export async function importTrendExcel(file: File): Promise<{
   const [xKey, ...metricKeys] = headers
   const series: TrendSeries[] = metricKeys.map((key, i) => {
     const colIdx = headers.indexOf(key)
+    const keyStr = String(key)
+    const match = keyStr.match(/^([^(（\[]+)[(（\[]([^)）\]]+)[)）\]]$/)
+    let name = keyStr
+    let unit: string | undefined = undefined
+    if (match) {
+      name = match[1].trim()
+      unit = match[2].trim()
+    }
     return {
       id: `s_${i}_${key}`,
-      name: String(key),
+      name,
+      unit,
       color: PALETTE[i % PALETTE.length],
       data: dataRows.map((row) => ({
         x: String(row[0] ?? ''),

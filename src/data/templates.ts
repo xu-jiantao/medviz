@@ -32,15 +32,21 @@ export function downloadSheet(filename: string, aoa: Aoa, sheetName = 'Sheet1') 
   const a = document.createElement('a')
   a.href = url
   a.download = filename
+  document.body.appendChild(a)
   a.click()
+  document.body.removeChild(a)
   URL.revokeObjectURL(url)
+}
+
+function sanitizeSheetName(name: string): string {
+  return name.replace(/[:\\/\?\*\[\]]/g, ' ').slice(0, 31).trim()
 }
 
 /** 多 sheet 工作簿下载 */
 export function downloadWorkbook(filename: string, sheets: { name: string; aoa: Aoa }[]) {
   const wb = XLSX.utils.book_new()
   for (const sh of sheets) {
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sh.aoa), sh.name.slice(0, 31))
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sh.aoa), sanitizeSheetName(sh.name))
   }
   const out = XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
   const blob = new Blob([out], { type: 'application/octet-stream' })
@@ -48,7 +54,9 @@ export function downloadWorkbook(filename: string, sheets: { name: string; aoa: 
   const a = document.createElement('a')
   a.href = url
   a.download = filename
+  document.body.appendChild(a)
   a.click()
+  document.body.removeChild(a)
   URL.revokeObjectURL(url)
 }
 

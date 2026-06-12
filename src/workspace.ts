@@ -6,7 +6,7 @@ import { useNomogramStore } from './store/nomogramStore'
 import { usePatientStore, DEFAULT_PATIENT } from './store/patientStore'
 import { useClinicalStore } from './store/clinicalStore'
 import { useNavStore } from './store/navStore'
-import { DEFAULT_SCENARIO } from './nav'
+import { DEFAULT_SCENARIO, SCENARIOS } from './nav'
 import { trendSamples } from './charts/TrendChart/samples'
 import { radarSamples } from './charts/RadarChart/samples'
 import { heatmapSamples } from './charts/Heatmap/samples'
@@ -23,6 +23,9 @@ interface WorkspaceData {
   nomogram: unknown
   nomogramSelection: unknown
   patient: unknown
+  patients?: unknown
+  activePatientId?: string
+  patientConfigs?: unknown
   clinicalOverrides: unknown
   scenarioKey: string
   savedAt: string
@@ -32,13 +35,35 @@ const key = (username: string) => `workspace:${username.toLowerCase()}`
 
 /** 采集当前所有可视化与上下文状态 */
 export function gatherWorkspace(): WorkspaceData {
+  const patientStore = usePatientStore.getState()
+  const activeId = patientStore.activePatientId
+  const scenarioKey = useNavStore.getState().scenarioKey
+  const activeScenario = SCENARIOS[scenarioKey]
+  
+  if (activeId && activeScenario) {
+    let activeConfig: any = null
+    if (activeScenario.view === 'trend') activeConfig = useTrendStore.getState().config
+    else if (activeScenario.view === 'radar') activeConfig = useRadarStore.getState().config
+    else if (activeScenario.view === 'heatmap') activeConfig = useHeatmapStore.getState().config
+    else if (activeScenario.view === 'nomogram') activeConfig = useNomogramStore.getState().config
+    
+    if (activeConfig) {
+      // 保证深拷贝，避免 Zustand 引用共享
+      patientStore.patientConfigs[activeId] = patientStore.patientConfigs[activeId] ?? {}
+      patientStore.patientConfigs[activeId][scenarioKey] = clone(activeConfig)
+    }
+  }
+
   return {
     trend: useTrendStore.getState().config,
     radar: useRadarStore.getState().config,
     heatmap: useHeatmapStore.getState().config,
     nomogram: useNomogramStore.getState().config,
     nomogramSelection: useNomogramStore.getState().selection,
-    patient: usePatientStore.getState().patient,
+    patient: patientStore.patient,
+    patients: patientStore.patients,
+    activePatientId: patientStore.activePatientId,
+    patientConfigs: patientStore.patientConfigs,
     clinicalOverrides: useClinicalStore.getState().overrides,
     scenarioKey: useNavStore.getState().scenarioKey,
     savedAt: new Date().toISOString(),
@@ -47,6 +72,24 @@ export function gatherWorkspace(): WorkspaceData {
 
 /** 把一份工作区数据应用到各 store */
 function applyWorkspace(w: WorkspaceData) {
+  if (w.patients && Array.isArray(w.patients) && w.patients.length > 0) {
+    usePatientStore.getState().setPatients(w.patients as never)
+  } else {
+    usePatientStore.getState().setPatients([DEFAULT_PATIENT])
+  }
+  
+  if (w.activePatientId) {
+    usePatientStore.getState().setActivePatientId(w.activePatientId)
+  } else {
+    usePatientStore.getState().setActivePatientId(DEFAULT_PATIENT.mrn)
+  }
+  
+  if (w.patientConfigs) {
+    usePatientStore.getState().setPatientConfigs(w.patientConfigs as never)
+  } else {
+    usePatientStore.getState().setPatientConfigs({})
+  }
+
   if (w.trend) useTrendStore.getState().setConfig(w.trend as never)
   if (w.radar) useRadarStore.getState().setConfig(w.radar as never)
   if (w.heatmap) useHeatmapStore.getState().setConfig(w.heatmap as never)
@@ -106,7 +149,12 @@ export function resetWorkspace() {
   useNomogramStore.getState().setConfig(clone(nomogramSamples['非小细胞肺癌术后生存']))
   useNomogramStore.setState({ selection: {} })
   useClinicalStore.getState().setOverrides({})
+  
+  usePatientStore.getState().setPatients([DEFAULT_PATIENT])
+  usePatientStore.getState().setActivePatientId(DEFAULT_PATIENT.mrn)
+  usePatientStore.getState().setPatientConfigs({})
   usePatientStore.getState().setPatient(clone(DEFAULT_PATIENT))
+  
   useNavStore.getState().restore(DEFAULT_SCENARIO)
 }
 

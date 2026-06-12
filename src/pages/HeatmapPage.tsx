@@ -103,8 +103,8 @@ export default function HeatmapPage() {
   ]
 
   return (
-    <Row gutter={16}>
-      <Col flex="auto">
+    <Row gutter={16} wrap={false}>
+      <Col flex="auto" style={{ minWidth: 0 }}>
         <div className="medviz-chart-card">
           <Heatmap config={config} onExportExcel={() => exportCurrentChartExcel('heatmap')} />
         </div>

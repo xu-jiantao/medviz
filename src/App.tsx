@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   Layout, Menu, Typography, Button, Space, Dropdown, Avatar, Spin, Tooltip, DatePicker,
-  App as AntApp,
+  App as AntApp, Tag,
 } from 'antd'
 import {
   LineChartOutlined, RadarChartOutlined, TableOutlined, CalculatorOutlined,
@@ -15,19 +15,25 @@ import HeatmapPage from './pages/HeatmapPage'
 import NomogramPage from './pages/NomogramPage'
 import LoginPage from './pages/LoginPage'
 import AggregatePage from './pages/AggregatePage'
+import PatientManagementPage from './pages/PatientManagementPage'
 import ProjectsDrawer from './pages/ProjectsDrawer'
 import AccountModal from './pages/AccountModal'
 import PatientBar from './components/PatientBar'
 import { saveProjectFile, loadProjectFile } from './export/projectIO'
 import { exportElementToPdf } from './export/exportPdf'
-import { exportCurrentChartExcel } from './export/exportChartExcel'
+import { exportPatientMasterExcel } from './export/patientMasterIO'
+import { usePatientStore, saveActivePatientConfig } from './store/patientStore'
 import { useAuthStore } from './auth/authStore'
 import { useNavStore } from './store/navStore'
 import { loadWorkspace, resetWorkspace, startAutosave, syncWorkspaceFromCloud } from './workspace'
 import { NAV } from './nav'
 import { checkForUpdate, isTauri } from './updater'
 
-const ROLE_LABEL: Record<string, string> = { admin: '管理员', doctor: '医生', user: '普通用户' }
+const ROLE_TAG: Record<string, { color: string; label: string }> = {
+  admin: { color: 'red', label: '管理员' },
+  doctor: { color: 'blue', label: '医生' },
+  user: { color: 'default', label: '普通用户' },
+}
 
 const { Header, Sider, Content } = Layout
 const { Title } = Typography
@@ -54,7 +60,7 @@ export default function App() {
   const [exporting, setExporting] = useState(false)
   const [projectsOpen, setProjectsOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
-  const [showAggregate, setShowAggregate] = useState(false)
+  const [adminView, setAdminView] = useState<'none' | 'aggregate' | 'patients'>('none')
   const fileRef = useRef<HTMLInputElement>(null)
   const canAggregate = currentUser?.role === 'admin' || currentUser?.role === 'doctor'
 
@@ -164,7 +170,12 @@ export default function App() {
           <Tooltip title="我的项目"><Button ghost size="small" icon={<AppstoreOutlined />} onClick={() => setProjectsOpen(true)} /></Tooltip>
           <Tooltip title="打开项目文件"><Button ghost size="small" icon={<FolderOpenOutlined />} onClick={() => fileRef.current?.click()} /></Tooltip>
           <Tooltip title="导出项目文件"><Button ghost size="small" icon={<SaveOutlined />} onClick={saveProjectFile} /></Tooltip>
-          <Button size="small" icon={<FileExcelOutlined />} onClick={() => exportCurrentChartExcel(view)} style={{ background: '#52c41a', color: '#fff', borderColor: '#52c41a' }}>
+          <Button
+            size="small"
+            icon={<FileExcelOutlined />}
+            onClick={() => exportPatientMasterExcel(usePatientStore.getState().activePatientId)}
+            style={{ background: '#52c41a', color: '#fff', borderColor: '#52c41a' }}
+          >
             导出Excel
           </Button>
           <Button type="primary" size="small" icon={<FilePdfOutlined />} loading={exporting} onClick={onExportPdf}>
@@ -173,7 +184,7 @@ export default function App() {
           <Dropdown
             menu={{
               items: [
-                { key: 'u', label: `${currentUser.email || currentUser.username}（${ROLE_LABEL[currentUser.role]}）`, disabled: true },
+                { key: 'u', label: `${currentUser.email || currentUser.username}（${ROLE_TAG[currentUser.role].label}）`, disabled: true },
                 { type: 'divider' },
                 { key: 'account', icon: <SettingOutlined />, label: '账号设置 / 改密码', onClick: () => setAccountOpen(true) },
                 ...(isTauri
@@ -186,6 +197,9 @@ export default function App() {
             <Space style={{ color: '#fff', cursor: 'pointer' }}>
               <Avatar size="small" style={{ background: '#1677ff' }} icon={<UserOutlined />} />
               {currentUser.username}
+              <Tag color={ROLE_TAG[currentUser.role].color} style={{ marginInlineStart: 4 }}>
+                {ROLE_TAG[currentUser.role].label}
+              </Tag>
             </Space>
           </Dropdown>
         </Space>
@@ -194,22 +208,29 @@ export default function App() {
         <Sider width={216} theme="light" style={{ overflow: 'auto' }}>
           <Menu
             mode="inline"
-            selectedKeys={[showAggregate ? 'aggregate' : scenarioKey]}
+            selectedKeys={[adminView !== 'none' ? adminView : scenarioKey]}
             items={[
               ...MENU_ITEMS,
               ...(canAggregate
-                ? [{ key: 'aggregate', icon: <DatabaseOutlined />, label: '数据汇总' }]
+                ? [
+                    { key: 'patients', icon: <UserOutlined />, label: '病人管理' },
+                    { key: 'aggregate', icon: <DatabaseOutlined />, label: '数据汇总' }
+                  ]
                 : []),
             ]}
             style={{ height: '100%', borderInlineEnd: 0 }}
             onClick={(e) => {
-              if (e.key === 'aggregate') setShowAggregate(true)
-              else { setShowAggregate(false); setScenario(e.key) }
+              saveActivePatientConfig()
+              if (e.key === 'aggregate') setAdminView('aggregate')
+              else if (e.key === 'patients') setAdminView('patients')
+              else { setAdminView('none'); setScenario(e.key) }
             }}
           />
         </Sider>
         <Content style={{ padding: 16, overflow: 'auto' }}>
-          {showAggregate ? <AggregatePage /> : (
+          {adminView === 'aggregate' && <AggregatePage />}
+          {adminView === 'patients' && <PatientManagementPage />}
+          {adminView === 'none' && (
             <>
               {view === 'trend' && <TrendPage />}
               {view === 'radar' && <RadarPage />}

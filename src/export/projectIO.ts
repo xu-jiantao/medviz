@@ -53,7 +53,9 @@ export function saveProjectFile() {
   const filename = `medviz-项目-${stamp}.json`
   a.href = url
   a.download = filename
+  document.body.appendChild(a)
   a.click()
+  document.body.removeChild(a)
   URL.revokeObjectURL(url)
 
   const isMac = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('mac')

@@ -1,23 +1,6 @@
 import { create } from 'zustand'
 import { SCENARIOS, DEFAULT_SCENARIO, type ViewKey } from '@/nav'
-import { useTrendStore } from './trendStore'
-import { useRadarStore } from './radarStore'
-import { useHeatmapStore } from './heatmapStore'
-import { useNomogramStore } from './nomogramStore'
-import { trendSamples } from '@/charts/TrendChart/samples'
-import { radarSamples } from '@/charts/RadarChart/samples'
-import { heatmapSamples } from '@/charts/Heatmap/samples'
-import { nomogramSamples } from '@/charts/Nomogram/samples'
-
-const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x))
-
-/** 把场景对应的内置示例加载进相应图表 store（用户点击场景时调用） */
-function loadSample(view: ViewKey, sample: string) {
-  if (view === 'trend' && trendSamples[sample]) useTrendStore.getState().setConfig(clone(trendSamples[sample]))
-  else if (view === 'radar' && radarSamples[sample]) useRadarStore.getState().setConfig(clone(radarSamples[sample]))
-  else if (view === 'heatmap' && heatmapSamples[sample]) useHeatmapStore.getState().setConfig(clone(heatmapSamples[sample]))
-  else if (view === 'nomogram' && nomogramSamples[sample]) useNomogramStore.getState().setConfig(clone(nomogramSamples[sample]))
-}
+import { usePatientStore, loadPatientData } from './patientStore'
 
 interface NavState {
   scenarioKey: string
@@ -39,7 +22,10 @@ export const useNavStore = create<NavState>((set) => ({
     const sc = SCENARIOS[scenarioKey]
     if (!sc) return
     set({ scenarioKey, view: sc.view, sample: sc.sample })
-    loadSample(sc.view, sc.sample)
+    
+    // 加载当前病人在该场景下的配置数据（若无则自动 fallback 至默认示例）
+    const activePatientId = usePatientStore.getState().activePatientId
+    loadPatientData(activePatientId, scenarioKey)
   },
   restore: (scenarioKey) => {
     const sc = SCENARIOS[scenarioKey]
