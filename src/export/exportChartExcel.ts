@@ -4,12 +4,16 @@ import { useRadarStore } from '@/store/radarStore'
 import { useHeatmapStore } from '@/store/heatmapStore'
 import { useNomogramStore } from '@/store/nomogramStore'
 import { usePatientStore } from '@/store/patientStore'
-import type { ViewKey } from '@/nav'
+import type { ViewKey, Scenario } from '@/nav'
 import { totalPoints, outcomeProbability } from '@/charts/Nomogram/calc'
 import type { TrendChartConfig } from '@/charts/TrendChart/types'
 import type { RadarChartConfig } from '@/charts/RadarChart/types'
 import type { HeatmapConfig } from '@/charts/Heatmap/types'
 import type { NomogramConfig, NomogramSelection } from '@/charts/Nomogram/types'
+import { trendSamples } from '@/charts/TrendChart/samples'
+import { radarSamples } from '@/charts/RadarChart/samples'
+import { heatmapSamples } from '@/charts/Heatmap/samples'
+import { nomogramSamples } from '@/charts/Nomogram/samples'
 
 // ---- 各图：config → 数据表（纯函数，可作用于任意 config，供导出/模板/汇总复用）----
 
@@ -72,6 +76,38 @@ export function chartAoaFromWorkspace(view: ViewKey, w: Record<string, unknown>)
     if (view === 'nomogram' && w.nomogram)
       return nomogramAoa(w.nomogram as NomogramConfig, (w.nomogramSelection as NomogramSelection) ?? {})
   } catch { /* 跳过坏数据 */ }
+  return null
+}
+
+/** 从一份工作区或者默认示例里获取指定临床场景的数据表（汇总导出用） */
+export function chartAoaForScenario(s: Scenario, w: Record<string, unknown>): { title: string; aoa: Aoa } | null {
+  try {
+    // 1. 如果该工作区当前激活的场景正是我们要导出的这个场景，则直接使用工作区中被编辑过的数据
+    if (w.scenarioKey === s.key) {
+      if (s.view === 'trend' && w.trend) return trendAoa(w.trend as TrendChartConfig)
+      if (s.view === 'radar' && w.radar) return radarAoa(w.radar as RadarChartConfig)
+      if (s.view === 'heatmap' && w.heatmap) return heatmapAoa(w.heatmap as HeatmapConfig)
+      if (s.view === 'nomogram' && w.nomogram) {
+        return nomogramAoa(w.nomogram as NomogramConfig, (w.nomogramSelection as NomogramSelection) ?? {})
+      }
+    }
+
+    // 2. 否则，使用该场景的默认内置数据来进行导出
+    let config: any = null
+    if (s.view === 'trend') config = trendSamples[s.sample]
+    else if (s.view === 'radar') config = radarSamples[s.sample]
+    else if (s.view === 'heatmap') config = heatmapSamples[s.sample]
+    else if (s.view === 'nomogram') config = nomogramSamples[s.sample]
+
+    if (!config) return null
+
+    if (s.view === 'trend') return trendAoa(config as TrendChartConfig)
+    if (s.view === 'radar') return radarAoa(config as RadarChartConfig)
+    if (s.view === 'heatmap') return heatmapAoa(config as HeatmapConfig)
+    if (s.view === 'nomogram') return nomogramAoa(config as NomogramConfig, {})
+  } catch {
+    // 忽略异常数据
+  }
   return null
 }
 

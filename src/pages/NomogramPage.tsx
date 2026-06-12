@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   Card, Select, Input, Button, Space, Table, Divider, Typography, InputNumber,
   Row, Col, Statistic, Tag, Collapse, ColorPicker, Segmented, Alert,
+  App as AntApp,
 } from 'antd'
 import { DeleteOutlined, PlusOutlined, ReloadOutlined, ExperimentOutlined } from '@ant-design/icons'
 import NomogramChart from '@/charts/Nomogram/NomogramChart'
@@ -13,16 +14,26 @@ import ClinicalCard from '@/components/ClinicalCard'
 import FitModal from './FitModal'
 import EvalCharts from '@/charts/Nomogram/EvalCharts'
 import type { EvalData, FitMeta } from '@/data/fitClient'
+import { nomogramSamples } from '@/charts/Nomogram/samples'
 
 const { Text, Title } = Typography
 const uid = () => Math.random().toString(36).slice(2, 9)
 
 export default function NomogramPage() {
   const { config, selection, setConfig, patch, mutate, setSel, resetSel } = useNomogramStore()
+  const { message } = AntApp.useApp()
   const sample = useNavStore((s) => s.sample)
   const [fitOpen, setFitOpen] = useState(false)
   const [evalData, setEvalData] = useState<EvalData>()
   const [fitMeta, setFitMeta] = useState<FitMeta>()
+
+  const onReset = () => {
+    const defaults = nomogramSamples[sample]
+    if (defaults) {
+      setConfig(JSON.parse(JSON.stringify(defaults)))
+      message.success('已还原为该场景默认模型')
+    }
+  }
 
   const total = totalPoints(config, selection)
 
@@ -123,7 +134,7 @@ export default function NomogramPage() {
           </div>
         </Card>
 
-        <ModelEditor config={config} patch={patch} mutate={mutate} />
+        <ModelEditor config={config} patch={patch} mutate={mutate} onReset={onReset} />
       </Col>
     </Row>
   )
@@ -131,15 +142,17 @@ export default function NomogramPage() {
 
 // ---------- 模型编辑器 ----------
 function ModelEditor({
-  config, patch, mutate,
+  config, patch, mutate, onReset,
 }: {
   config: NomogramConfig
   patch: (p: Partial<NomogramConfig>) => void
   mutate: (fn: (c: NomogramConfig) => NomogramConfig) => void
+  onReset: () => void
 }) {
   return (
     <Card size="small" title="编辑模型" style={{ marginTop: 16 }}
-      styles={{ body: { maxHeight: '70vh', overflow: 'auto' } }}>
+      styles={{ body: { maxHeight: '70vh', overflow: 'auto' } }}
+      extra={<Button size="small" icon={<ReloadOutlined />} onClick={onReset}>还原默认</Button>}>
       <Space style={{ width: '100%' }} direction="vertical" size={8}>
         <div>
           <Text>标题</Text>

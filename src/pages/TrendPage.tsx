@@ -2,7 +2,7 @@ import { useState } from 'react'
 import {
   Card, Switch, Input, Button, Space, Table, Upload, App as AntApp, Divider, Typography, InputNumber, Row, Col,
 } from 'antd'
-import { DeleteOutlined, PlusOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
+import { DeleteOutlined, PlusOutlined, UploadOutlined, DownloadOutlined, ReloadOutlined } from '@ant-design/icons'
 import type { UploadProps } from 'antd'
 import TrendChart from '@/charts/TrendChart/TrendChart'
 import { useTrendStore } from '@/store/trendStore'
@@ -10,15 +10,24 @@ import { useNavStore } from '@/store/navStore'
 import ClinicalCard from '@/components/ClinicalCard'
 import { importTrendExcel } from '@/data/importExcel'
 import { downloadCurrentTemplate, exportCurrentChartExcel } from '@/export/exportChartExcel'
+import { trendSamples } from '@/charts/TrendChart/samples'
 
 const { Text } = Typography
 const uid = () => Math.random().toString(36).slice(2, 9)
 
 export default function TrendPage() {
   const { message } = AntApp.useApp()
-  const { config, patch, addReferenceLine, removeReferenceLine, addEventMarker, removeEventMarker } =
+  const { config, setConfig, patch, addReferenceLine, removeReferenceLine, addEventMarker, removeEventMarker } =
     useTrendStore()
   const sample = useNavStore((s) => s.sample)
+
+  const onReset = () => {
+    const defaults = trendSamples[sample]
+    if (defaults) {
+      setConfig(JSON.parse(JSON.stringify(defaults)))
+      message.success('已还原为该场景默认数据')
+    }
+  }
 
   const uploadProps: UploadProps = {
     accept: '.xlsx,.xls,.csv',
@@ -46,11 +55,20 @@ export default function TrendPage() {
       <Col flex="360px">
         <ClinicalCard sample={sample} />
         <Card size="small" title="参数微调" styles={{ body: { maxHeight: '64vh', overflow: 'auto' } }}>
-          <Upload {...uploadProps}>
-            <Button icon={<UploadOutlined />} block style={{ marginTop: 10 }}>
-              导入 Excel / CSV
-            </Button>
-          </Upload>
+          <Row gutter={8} style={{ marginTop: 10 }}>
+            <Col span={12}>
+              <Upload {...uploadProps} style={{ width: '100%' }}>
+                <Button icon={<UploadOutlined />} block>
+                  导入 Excel / CSV
+                </Button>
+              </Upload>
+            </Col>
+            <Col span={12}>
+              <Button icon={<ReloadOutlined />} block onClick={onReset}>
+                还原默认数据
+              </Button>
+            </Col>
+          </Row>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
             <Text type="secondary" style={{ fontSize: 12 }}>格式：首列时间点，其余每列一个指标</Text>
             <Button type="link" size="small" icon={<DownloadOutlined />} style={{ padding: 0 }} onClick={() => downloadCurrentTemplate('trend')}>

@@ -2,7 +2,7 @@ import {
   Card, Switch, Input, Button, Space, Table, Upload, App as AntApp, Divider,
   Typography, InputNumber, Row, Col, ColorPicker, Segmented,
 } from 'antd'
-import { DeleteOutlined, PlusOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
+import { DeleteOutlined, PlusOutlined, UploadOutlined, DownloadOutlined, ReloadOutlined } from '@ant-design/icons'
 import type { UploadProps } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import RadarChart from '@/charts/RadarChart/RadarChart'
@@ -12,6 +12,7 @@ import { useNavStore } from '@/store/navStore'
 import ClinicalCard from '@/components/ClinicalCard'
 import { importRadarExcel } from '@/data/importExcel'
 import { downloadCurrentTemplate, exportCurrentChartExcel } from '@/export/exportChartExcel'
+import { radarSamples } from '@/charts/RadarChart/samples'
 
 const { Text } = Typography
 const uid = () => Math.random().toString(36).slice(2, 9)
@@ -19,11 +20,19 @@ const PALETTE = ['#1677ff', '#cf1322', '#fa8c16', '#52c41a', '#722ed1', '#13c2c2
 
 export default function RadarPage() {
   const {
-    config, patch, addDimension, removeDimension, updateDimension,
+    config, setConfig, patch, addDimension, removeDimension, updateDimension,
     addSeries, removeSeries, updateSeries, setValue,
   } = useRadarStore()
   const { message } = AntApp.useApp()
   const sample = useNavStore((s) => s.sample)
+
+  const onReset = () => {
+    const defaults = radarSamples[sample]
+    if (defaults) {
+      setConfig(JSON.parse(JSON.stringify(defaults)))
+      message.success('已还原为该场景默认数据')
+    }
+  }
 
   const uploadProps: UploadProps = {
     accept: '.xlsx,.xls,.csv',
@@ -107,11 +116,20 @@ export default function RadarPage() {
       <Col flex="320px">
         <ClinicalCard sample={sample} />
         <Card size="small" title="参数微调" styles={{ body: { maxHeight: '68vh', overflow: 'auto' } }}>
-          <Upload {...uploadProps}>
-            <Button icon={<UploadOutlined />} block style={{ marginTop: 10 }}>
-              导入 Excel / CSV
-            </Button>
-          </Upload>
+          <Row gutter={8} style={{ marginTop: 10 }}>
+            <Col span={12}>
+              <Upload {...uploadProps} style={{ width: '100%' }}>
+                <Button icon={<UploadOutlined />} block>
+                  导入 Excel / CSV
+                </Button>
+              </Upload>
+            </Col>
+            <Col span={12}>
+              <Button icon={<ReloadOutlined />} block onClick={onReset}>
+                还原默认数据
+              </Button>
+            </Col>
+          </Row>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
             <Text type="secondary" style={{ fontSize: 12 }}>首列维度，「满分」列为量程，其余每列一组</Text>
             <Button type="link" size="small" icon={<DownloadOutlined />} style={{ padding: 0 }} onClick={() => downloadCurrentTemplate('radar')}>

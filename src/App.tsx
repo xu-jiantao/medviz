@@ -195,7 +195,6 @@ export default function App() {
           <Menu
             mode="inline"
             selectedKeys={[showAggregate ? 'aggregate' : scenarioKey]}
-            defaultOpenKeys={NAV.map((c) => c.key)}
             items={[
               ...MENU_ITEMS,
               ...(canAggregate

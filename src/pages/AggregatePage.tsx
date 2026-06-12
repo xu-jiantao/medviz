@@ -5,15 +5,8 @@ import { listUsers, type Role } from '@/auth/authStore'
 import { idbGet } from '@/auth/idb'
 import { listProjects } from '@/auth/projects'
 import { downloadWorkbook, type Aoa } from '@/data/templates'
-import { chartAoaFromWorkspace } from '@/export/exportChartExcel'
-import type { ViewKey } from '@/nav'
-
-const CHART_SHEETS: { view: ViewKey; name: string }[] = [
-  { view: 'trend', name: '趋势图' },
-  { view: 'radar', name: '雷达图' },
-  { view: 'heatmap', name: '热图' },
-  { view: 'nomogram', name: '列线图' },
-]
+import { chartAoaForScenario } from '@/export/exportChartExcel'
+import { NAV } from '@/nav'
 
 const { Title, Text } = Typography
 
@@ -88,21 +81,28 @@ export default function AggregatePage() {
     ]
     const sheets = [{ name: '用户汇总', aoa: summary }]
 
-    // Sheet 2~5：每种图类型一张，纵向堆叠所有用户的该图数据
-    for (const { view, name } of CHART_SHEETS) {
-      const aoa: Aoa = [[`${name} · 全部用户`]]
+    // Sheet 2~14：13个临床场景，每个场景一张表，纵向堆叠所有用户的该场景数据
+    const allScenarios = NAV.flatMap((c) => c.children.map((s) => ({ ...s, catLabel: c.label })))
+    for (const s of allScenarios) {
+      const aoa: Aoa = [[`${s.catLabel} - ${s.label} (${s.sample}) · 全部用户数据汇总`]]
       for (const u of rows) {
         const ws = wsMap[u.username]
         if (!ws) continue
-        const built = chartAoaFromWorkspace(view, ws)
+        const built = chartAoaForScenario(s, ws)
         if (!built) continue
-        aoa.push([], [`【${u.username}（${u.patientName}）】 ${built.title}`], ...built.aoa)
+        aoa.push(
+          [],
+          [`【用户名：${u.username} | 患者：${u.patientName} | 科室/床号：${u.bed} | 诊断：${u.diagnosis}】`],
+          ...built.aoa
+        )
       }
-      sheets.push({ name, aoa })
+      // 过滤 Excel 表名不允许的特殊字符（如 : \ / ? * [ ] 等），限制长度为 31
+      const sheetName = s.label.replace(/[\/\\?*:\[\]]/g, '_').slice(0, 31)
+      sheets.push({ name: sheetName, aoa })
     }
 
     downloadWorkbook(`全部用户病人数据汇总.xlsx`, sheets)
-    message.success(`已导出 ${rows.length} 个用户 × ${CHART_SHEETS.length} 种图`)
+    message.success(`已导出 ${rows.length} 个用户 × ${allScenarios.length} 种图表数据`)
   }
 
   return (
