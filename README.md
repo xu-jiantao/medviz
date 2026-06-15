@@ -129,8 +129,8 @@ git add -A && git commit -m "v0.6.0：说明"
 git push origin main
 
 # 3) 打 tag 并推送 → 触发 CI 构建+发布（约 15–25 分钟）
-git tag v0.6.6
-git push origin v0.6.6
+git tag v0.6.7
+git push origin v0.6.7
 ```
 
 完成后到 **[Releases](https://github.com/marinerxyz/medviz/releases)** → 第一个版本的 **Assets** 即是安装包
