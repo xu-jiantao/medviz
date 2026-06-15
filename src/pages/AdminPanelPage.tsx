@@ -47,8 +47,21 @@ export default function AdminPanelPage() {
   const [, force] = useState(0)
 
   const refresh = async () => {
-    await load()
-    setUsers((await listUsers()).filter((u) => u.role !== 'superadmin'))
+    try {
+      await load()
+      const allUsers = await listUsers()
+      const validUsers = allUsers
+        .filter((u) => u && u.username)
+        .map((u) => ({
+          ...u,
+          role: u.role || 'user'
+        }))
+        .filter((u) => u.role !== 'superadmin')
+      setUsers(validUsers)
+    } catch (err) {
+      console.error('Failed to load user management data:', err)
+      message.error('加载用户数据失败')
+    }
   }
   useEffect(() => {
     if (currentUser?.role === 'superadmin') {
@@ -81,12 +94,19 @@ export default function AdminPanelPage() {
           rowKey="username" size="small" pagination={false} dataSource={users}
           columns={[
             { title: '用户名', dataIndex: 'username' },
-            { title: '角色', dataIndex: 'role', render: (r: Role) => <Tag color={ROLE_TAG[r].color}>{ROLE_TAG[r].label}</Tag> },
+            {
+              title: '角色',
+              dataIndex: 'role',
+              render: (r: Role) => {
+                const tag = ROLE_TAG[r] || { color: 'default', label: '普通用户' }
+                return <Tag color={tag.color}>{tag.label}</Tag>
+              }
+            },
             {
               title: '使用期限', render: (_, u) => (
                 <Select
                   size="small" style={{ width: 140 }}
-                  value={limitToValue(acl.userLimits[u.username] ?? getDefaultLimit(u.username, u.role))}
+                  value={limitToValue(acl.userLimits[u.username] ?? getDefaultLimit(u.username, u.role ?? 'user'))}
                   options={LIMIT_OPTIONS.map((o) => ({ label: o.label, value: o.value }))}
                   onChange={async (v) => {
                     await setUserLimit(u.username, LIMIT_OPTIONS.find((o) => o.value === v)!.limit)
@@ -98,7 +118,7 @@ export default function AdminPanelPage() {
             {
               title: '剩余',
               render: (_, u) => {
-                const limit = acl.userLimits[u.username] ?? getDefaultLimit(u.username, u.role)
+                const limit = acl.userLimits[u.username] ?? getDefaultLimit(u.username, u.role ?? 'user')
                 if (limit.mode === 'permanent') {
                   return <Text type="secondary">永久</Text>
                 }
@@ -107,7 +127,7 @@ export default function AdminPanelPage() {
                   const units: Record<string, string> = { minutes: '分钟', hours: '小时', days: '天' }
                   return <Text type="warning">未登录（待激活 {limit.value}{units[limit.mode]}）</Text>
                 }
-                return <Text type="secondary">{fmtRemaining(remainingMs(u.username, u.role))}</Text>
+                return <Text type="secondary">{fmtRemaining(remainingMs(u.username, u.role ?? 'user'))}</Text>
               }
             },
             {
@@ -138,7 +158,14 @@ export default function AdminPanelPage() {
           rowKey="key" size="small" pagination={false}
           dataSource={editableRoles.map((role) => ({ key: role, role }))}
           columns={[
-            { title: '角色', dataIndex: 'role', render: (r: Role) => <Tag color={ROLE_TAG[r].color}>{ROLE_TAG[r].label}</Tag> },
+            {
+              title: '角色',
+              dataIndex: 'role',
+              render: (r: Role) => {
+                const tag = ROLE_TAG[r] || { color: 'default', label: '普通用户' }
+                return <Tag color={tag.color}>{tag.label}</Tag>
+              }
+            },
             ...FEATURES.map((f) => ({
               title: f.label,
               render: (_: unknown, row: { role: Role }) => (
