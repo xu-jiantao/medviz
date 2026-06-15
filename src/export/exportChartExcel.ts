@@ -99,10 +99,21 @@ export function chartAoaFromWorkspace(view: ViewKey, w: Record<string, unknown>)
   return null
 }
 
-/** 从一份工作区或者默认示例里获取指定临床场景的数据表（汇总导出用） */
-export function chartAoaForScenario(s: Scenario, w: Record<string, unknown>): { title: string; aoa: Aoa } | null {
+/** 从一份工作区或者默认示例里获取指定临床场景的数据表（汇总导出用，无工作区也回退默认） */
+export function chartAoaForScenario(s: Scenario, w: Record<string, unknown> = {}): { title: string; aoa: Aoa } | null {
   try {
-    // 1. 如果该工作区当前激活的场景正是我们要导出的这个场景，则直接使用工作区中被编辑过的数据
+    // 1. 优先：该用户在「当前病人」下、该场景的已编辑配置（patientConfigs[mrn][scenarioKey]）
+    const activeId = w.activePatientId as string | undefined
+    const pcfgs = w.patientConfigs as Record<string, Record<string, any>> | undefined
+    const pc = activeId && pcfgs ? pcfgs[activeId]?.[s.key] : undefined
+    if (pc) {
+      if (s.view === 'trend') return trendAoa(pc as TrendChartConfig)
+      if (s.view === 'radar') return radarAoa(pc as RadarChartConfig)
+      if (s.view === 'heatmap') return heatmapAoa(pc as HeatmapConfig)
+      if (s.view === 'nomogram') return nomogramAoa(pc as NomogramConfig, (pc._selection as NomogramSelection) ?? {})
+    }
+
+    // 2. 其次：工作区当前激活的场景正好是它，用 live config
     if (w.scenarioKey === s.key) {
       if (s.view === 'trend' && w.trend) return trendAoa(w.trend as TrendChartConfig)
       if (s.view === 'radar' && w.radar) return radarAoa(w.radar as RadarChartConfig)
@@ -112,7 +123,7 @@ export function chartAoaForScenario(s: Scenario, w: Record<string, unknown>): { 
       }
     }
 
-    // 2. 否则，使用该场景的默认内置数据来进行导出
+    // 3. 兜底：该场景的默认内置数据（保证每个场景都有表，不会空）
     let config: any = null
     if (s.view === 'trend') config = trendSamples[s.sample]
     else if (s.view === 'radar') config = radarSamples[s.sample]

@@ -23,6 +23,7 @@ interface Row {
 }
 
 const ROLE_TAG: Record<Role, { color: string; label: string }> = {
+  superadmin: { color: 'purple', label: '超级管理员' },
   admin: { color: 'red', label: '管理员' },
   doctor: { color: 'blue', label: '医生' },
   user: { color: 'default', label: '普通用户' },
@@ -88,10 +89,9 @@ export default function AggregatePage() {
       ['用户名', '患者姓名', '图表类别', '应用场景', '预警级别', '临床判断结论', '应对建议']
     ]
     for (const u of rows) {
-      const ws = wsMap[u.username]
-      if (!ws) continue
+      const ws = wsMap[u.username] ?? {}
       const clinicalOverrides = (ws.clinicalOverrides as Record<string, ClinicalNote>) ?? {}
-      
+
       NAV.forEach((cat) => {
         cat.children.forEach((s) => {
           const note = clinicalOverrides[s.sample] ?? CLINICAL[s.sample]
@@ -115,8 +115,7 @@ export default function AggregatePage() {
     for (const s of allScenarios) {
       const aoa: Aoa = [[`${s.catLabel} - ${s.label} (${s.sample}) · 全部用户数据汇总`]]
       for (const u of rows) {
-        const ws = wsMap[u.username]
-        if (!ws) continue
+        const ws = wsMap[u.username] ?? {}
         const built = chartAoaForScenario(s, ws)
         if (!built) continue
 

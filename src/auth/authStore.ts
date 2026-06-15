@@ -1,8 +1,9 @@
 import { create } from 'zustand'
 import { idbGet, idbSet, idbDel, idbKeys } from './idb'
 import { hashPassword, verifyPassword } from './crypto'
+import { checkAndStampLogin } from './acl'
 
-export type Role = 'admin' | 'doctor' | 'user'
+export type Role = 'superadmin' | 'admin' | 'doctor' | 'user'
 
 export interface StoredUser {
   username: string
@@ -41,13 +42,14 @@ interface AuthState {
 const userKey = (username: string) => `user:${username.toLowerCase()}`
 const SESSION_KEY = 'session'
 
-// 内置三种角色的演示账号
+// 内置四种角色的演示账号
 export const SEED_ACCOUNTS: { username: string; password: string; email: string; role: Role; label: string }[] = [
+  { username: 'superadmin', password: 'super1234', email: 'super@medviz.app', role: 'superadmin', label: '超级管理员' },
   { username: 'admin', password: 'admin1234', email: 'admin@medviz.app', role: 'admin', label: '管理员' },
   { username: 'doctor', password: 'doctor1234', email: 'doctor@medviz.app', role: 'doctor', label: '医生' },
   { username: 'demo', password: 'demo1234', email: 'demo@medviz.app', role: 'user', label: '普通用户' },
 ]
-export const DEMO = SEED_ACCOUNTS[2] // 默认一键登录用普通用户
+export const DEMO = SEED_ACCOUNTS.find((a) => a.username === 'demo')! // 默认一键登录用普通用户
 
 /** 确保演示账号存在（幂等，不影响当前会话） */
 async function ensureSeedAccounts() {
@@ -109,6 +111,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!u) throw new Error('用户名不存在')
     const ok = await verifyPassword(password, u.salt, u.hash)
     if (!ok) throw new Error('密码错误')
+    // 超管的使用时长 / 禁用控制
+    await checkAndStampLogin(u.username, u.role ?? 'user')
     await idbSet(SESSION_KEY, { username: u.username })
     set({ currentUser: { username: u.username, email: u.email, role: u.role ?? 'user' } })
   },

@@ -16,6 +16,7 @@ import NomogramPage from './pages/NomogramPage'
 import LoginPage from './pages/LoginPage'
 import AggregatePage from './pages/AggregatePage'
 import PatientManagementPage from './pages/PatientManagementPage'
+import AdminPanelPage from './pages/AdminPanelPage'
 import ProjectsDrawer from './pages/ProjectsDrawer'
 import AccountModal from './pages/AccountModal'
 import PatientBar from './components/PatientBar'
@@ -27,9 +28,12 @@ import { useAuthStore } from './auth/authStore'
 import { useNavStore } from './store/navStore'
 import { loadWorkspace, resetWorkspace, startAutosave, syncWorkspaceFromCloud } from './workspace'
 import { NAV } from './nav'
+import { useAclStore, can } from './auth/acl'
+import { SettingFilled } from '@ant-design/icons'
 import { checkForUpdate, isTauri } from './updater'
 
 const ROLE_TAG: Record<string, { color: string; label: string }> = {
+  superadmin: { color: 'purple', label: '超级管理员' },
   admin: { color: 'red', label: '管理员' },
   doctor: { color: 'blue', label: '医生' },
   user: { color: 'default', label: '普通用户' },
@@ -60,13 +64,22 @@ export default function App() {
   const [exporting, setExporting] = useState(false)
   const [projectsOpen, setProjectsOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
-  const [adminView, setAdminView] = useState<'none' | 'aggregate' | 'patients'>('none')
+  const [adminView, setAdminView] = useState<'none' | 'aggregate' | 'patients' | 'admin-panel'>('none')
+  const [openKeys, setOpenKeys] = useState<string[]>([]) // 一级菜单默认收起
   const fileRef = useRef<HTMLInputElement>(null)
-  const canAggregate = currentUser?.role === 'admin' || currentUser?.role === 'doctor'
+  const aclLoad = useAclStore((s) => s.load)
+  useAclStore((s) => s.acl) // 订阅，权限变化时刷新门禁
+  const role = currentUser?.role
+  const isMgr = role === 'admin' || role === 'doctor' || role === 'superadmin'
+  const canAggregate = isMgr && can(role, 'aggregate')
+  const canPatients = isMgr && can(role, 'patients')
+  const canExport = can(role, 'export')
+  const isSuper = role === 'superadmin'
 
   useEffect(() => {
     init()
-  }, [init])
+    aclLoad()
+  }, [init, aclLoad])
 
   // 登录后加载该用户工作区（无则重置默认），并开启自动保存
   useEffect(() => {
@@ -169,18 +182,22 @@ export default function App() {
           <input ref={fileRef} type="file" accept=".json" style={{ display: 'none' }} onChange={onOpen} />
           <Tooltip title="我的项目"><Button ghost size="small" icon={<AppstoreOutlined />} onClick={() => setProjectsOpen(true)} /></Tooltip>
           <Tooltip title="打开项目文件"><Button ghost size="small" icon={<FolderOpenOutlined />} onClick={() => fileRef.current?.click()} /></Tooltip>
-          <Tooltip title="导出项目文件"><Button ghost size="small" icon={<SaveOutlined />} onClick={saveProjectFile} /></Tooltip>
-          <Button
-            size="small"
-            icon={<FileExcelOutlined />}
-            onClick={() => exportPatientMasterExcel(usePatientStore.getState().activePatientId)}
-            style={{ background: '#52c41a', color: '#fff', borderColor: '#52c41a' }}
-          >
-            导出Excel
-          </Button>
-          <Button type="primary" size="small" icon={<FilePdfOutlined />} loading={exporting} onClick={onExportPdf}>
-            导出/打印
-          </Button>
+          {canExport && (
+            <>
+              <Tooltip title="导出项目文件"><Button ghost size="small" icon={<SaveOutlined />} onClick={saveProjectFile} /></Tooltip>
+              <Button
+                size="small"
+                icon={<FileExcelOutlined />}
+                onClick={() => exportPatientMasterExcel(usePatientStore.getState().activePatientId)}
+                style={{ background: '#52c41a', color: '#fff', borderColor: '#52c41a' }}
+              >
+                导出Excel
+              </Button>
+              <Button type="primary" size="small" icon={<FilePdfOutlined />} loading={exporting} onClick={onExportPdf}>
+                导出/打印
+              </Button>
+            </>
+          )}
           <Dropdown
             menu={{
               items: [
@@ -209,20 +226,20 @@ export default function App() {
           <Menu
             mode="inline"
             selectedKeys={[adminView !== 'none' ? adminView : scenarioKey]}
+            openKeys={openKeys}
+            onOpenChange={setOpenKeys}
             items={[
               ...MENU_ITEMS,
-              ...(canAggregate
-                ? [
-                    { key: 'patients', icon: <UserOutlined />, label: '病人管理' },
-                    { key: 'aggregate', icon: <DatabaseOutlined />, label: '数据汇总' }
-                  ]
-                : []),
+              ...(canPatients ? [{ key: 'patients', icon: <UserOutlined />, label: '病人管理' }] : []),
+              ...(canAggregate ? [{ key: 'aggregate', icon: <DatabaseOutlined />, label: '数据汇总' }] : []),
+              ...(isSuper ? [{ key: 'admin-panel', icon: <SettingFilled />, label: '权限与时长管理' }] : []),
             ]}
             style={{ height: '100%', borderInlineEnd: 0 }}
             onClick={(e) => {
               saveActivePatientConfig()
               if (e.key === 'aggregate') setAdminView('aggregate')
               else if (e.key === 'patients') setAdminView('patients')
+              else if (e.key === 'admin-panel') setAdminView('admin-panel')
               else { setAdminView('none'); setScenario(e.key) }
             }}
           />
@@ -230,6 +247,7 @@ export default function App() {
         <Content style={{ padding: 16, overflow: 'auto' }}>
           {adminView === 'aggregate' && <AggregatePage />}
           {adminView === 'patients' && <PatientManagementPage />}
+          {adminView === 'admin-panel' && <AdminPanelPage />}
           {adminView === 'none' && (
             <>
               {view === 'trend' && <TrendPage />}
