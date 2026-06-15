@@ -28,7 +28,7 @@ import { useAuthStore } from './auth/authStore'
 import { useNavStore } from './store/navStore'
 import { loadWorkspace, resetWorkspace, startAutosave, syncWorkspaceFromCloud } from './workspace'
 import { NAV } from './nav'
-import { useAclStore, can } from './auth/acl'
+import { remainingMs, useAclStore, can } from './auth/acl'
 import { SettingFilled } from '@ant-design/icons'
 import { checkForUpdate, isTauri } from './updater'
 
@@ -83,6 +83,7 @@ export default function App() {
 
   // 登录后加载该用户工作区（无则重置默认），并开启自动保存
   useEffect(() => {
+    setAdminView('none') // 切换/登录/注销用户时重置管理视图
     if (!currentUser) return
     let cleanup: (() => void) | undefined
     loadWorkspace(currentUser.username)
@@ -91,6 +92,55 @@ export default function App() {
       .finally(() => { cleanup = startAutosave(currentUser.username) })
     return () => cleanup?.()
   }, [currentUser?.username])
+
+  // 权限卫兵：当角色或权限变化时，如果当前视图无权访问则自动退回普通图表视图
+  useEffect(() => {
+    if (adminView === 'admin-panel' && !isSuper) {
+      setAdminView('none')
+    } else if (adminView === 'patients' && !canPatients) {
+      setAdminView('none')
+    } else if (adminView === 'aggregate' && !canAggregate) {
+      setAdminView('none')
+    }
+  }, [adminView, isSuper, canPatients, canAggregate])
+
+  // 检查账号是否过期或禁用
+  useEffect(() => {
+    if (!currentUser || currentUser.role === 'superadmin') return
+
+    const checkExpiration = async () => {
+      await useAclStore.getState().load()
+      const acl = useAclStore.getState().acl
+      
+      // 检查是否被超级管理员手动禁用
+      if (acl.disabled[currentUser.username]) {
+        await logout()
+        modal.warning({
+          title: '账号已被禁用',
+          content: '您的账号已被管理员禁用，请联系海大计算机学院徐老师！',
+          okText: '确定',
+        })
+        return
+      }
+
+      // 检查使用期限是否过期
+      const ms = remainingMs(currentUser.username, currentUser.role)
+      if (ms <= 0) {
+        await logout()
+        modal.warning({
+          title: '使用期限已到期',
+          content: '您的账号使用期限已到，请联系海大计算机学院徐老师！',
+          okText: '确定',
+        })
+      }
+    }
+
+    // 挂载时立即检查一次
+    checkExpiration()
+
+    const interval = setInterval(checkExpiration, 5000)
+    return () => clearInterval(interval)
+  }, [currentUser, logout, modal])
 
   useEffect(() => {
     if (isTauri) runUpdateCheck(false)

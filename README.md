@@ -30,7 +30,7 @@
 ### 账号、角色与项目
 - **注册登录 + 应用门禁**：本地优先（PBKDF2 加盐哈希，存 IndexedDB，离线可用）。
 - **三种角色**：`admin`(管理员) / `doctor`(医生) / `user`(普通用户)，按角色显示菜单。内置演示账号：
-  `admin / admin1234`、`doctor / doctor1234`、`demo / demo1234`。
+  `admin / admin8832`、`doctor / doctor8833`、`demo / demo8834`。
 - **忘记密码 / 改密码**：注册可设密保问题；登录页「忘记密码」答题重置；用户菜单改密码。
 - **工作区自动持久化**：四图编辑、患者信息、临床判断自定义等**按用户自动保存**，刷新/重开自动恢复（见 [数据存储与持久化](#数据存储与持久化重要)）。
 - **按用户存项目**：把四图全部配置存为命名项目（仅本人可见）。
@@ -68,8 +68,8 @@ npm run dev      # 开发服务器 http://localhost:5173
 npm run build    # 构建生产包到 dist/
 ```
 
-首次进入是登录页，点 **「⚡ 用演示账号一键登录」**（普通用户 `demo / demo1234`）即可进入，无需注册。
-体验不同角色可手动登录：`admin / admin1234`（管理员）、`doctor / doctor1234`（医生）。
+首次进入是登录页，点 **「⚡ 用演示账号一键登录」**（普通用户 `demo / `）即可进入，无需注册。
+体验不同角色可手动登录：`admin /`（管理员）、`doctor /`（医生）。
 
 ## 桌面应用
 
@@ -78,7 +78,7 @@ npm run build    # 构建生产包到 dist/
 npm run tauri:build      # 产物在 src-tauri/target/release/bundle/
 ```
 
-或直接到 **[Releases](https://github.com/xu-jiantao/medviz/releases)** 下载已构建好的安装包：
+或直接到 **[Releases](https://github.com/marinerxyz/medviz/releases)** 下载已构建好的安装包：
 - Mac：`MedViz_x.y.z_aarch64.dmg`
 - Windows：`MedViz_x.y.z_x64-setup.exe` 或 `_x64_en-US.msi`
 
@@ -129,11 +129,11 @@ git add -A && git commit -m "v0.6.0：说明"
 git push origin main
 
 # 3) 打 tag 并推送 → 触发 CI 构建+发布（约 15–25 分钟）
-git tag v0.6.0
-git push origin v0.6.0
+git tag v0.6.6
+git push origin v0.6.6
 ```
 
-完成后到 **[Releases](https://github.com/xu-jiantao/medviz/releases)** → 第一个版本的 **Assets** 即是安装包
+完成后到 **[Releases](https://github.com/marinerxyz/medviz/releases)** → 第一个版本的 **Assets** 即是安装包
 （`MedViz_x.y.z_aarch64.dmg`、`MedViz_x.y.z_x64-setup.exe`、`_x64_en-US.msi`）。
 
 ### 桌面端自动更新（用户侧）

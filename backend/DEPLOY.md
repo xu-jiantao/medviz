@@ -23,7 +23,7 @@
 
 1. 打开 https://render.com ，用 GitHub 账号登录（免费，不要卡）
 2. 点 **New → Blueprint**
-3. 选你的仓库 **xu-jiantao/medviz** → Render 会自动读到根目录的 `render.yaml`
+3. 选你的仓库 **marinerxyz/medviz** → Render 会自动读到根目录的 `render.yaml`
 4. 部署时它会让你填一个环境变量 **DATABASE_URL** → 把第 1 步复制的 Neon 连接串粘进去
    （`MEDVIZ_SECRET` 会自动生成，不用管）
 5. 点 **Apply / Create**，等 3~5 分钟构建完成

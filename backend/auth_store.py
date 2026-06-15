@@ -50,7 +50,7 @@ def _run(sql: str, params: tuple = (), fetch: str | None = None):
 
 
 # 内置演示账号，测试时免注册直接用
-DEMO_USER = ("demo", "demo@medviz.app", "demo1234")
+DEMO_USER = ("demo", "demo@medviz.app", "demo8834")
 
 
 def init_db() -> None:

@@ -1,6 +1,18 @@
 import { create } from 'zustand'
 import { idbGet, idbSet } from './idb'
 import type { Role } from './authStore'
+import { useAuthStore } from './authStore'
+
+// 获取各角色的默认使用时限
+export function getDefaultLimit(username: string, role: Role): UserLimit {
+  const u = username.toLowerCase()
+  if (role === 'superadmin') return { mode: 'permanent' }
+  if (u === 'admin' || role === 'admin') return { mode: 'days', value: 7 } // 普通管理员默认 7 天
+  if (u === 'doctor' || role === 'doctor') return { mode: 'days', value: 1 } // 医生默认 1 天
+  if (u === 'demo') return { mode: 'minutes', value: 2 } // 普通用户 (demo) 默认 2 分钟
+  if (role === 'user') return { mode: 'hours', value: 1 } // 新注册用户 (user) 默认 1 小时
+  return { mode: 'permanent' }
+}
 
 // 受控功能列表（超管可按角色开关）。图表浏览始终允许。
 export const FEATURES: { key: string; label: string }[] = [
@@ -11,11 +23,26 @@ export const FEATURES: { key: string; label: string }[] = [
   { key: 'aggregate', label: '数据汇总导出' },
 ]
 
-export type LimitMode = 'permanent' | 'hours' | 'days'
+export type LimitMode = 'permanent' | 'minutes' | 'hours' | 'days'
 export interface UserLimit {
   mode: LimitMode
-  value?: number // hours 或 days 的数量
+  value?: number // minutes / hours / days 的数量
 }
+
+const MS_MINUTE = 60_000
+const MS_HOUR = 3600_000
+const MS_DAY = 86400_000
+
+/** 期限对应的总毫秒数（permanent 返回 Infinity） */
+export function spanMs(limit?: UserLimit): number {
+  if (!limit || limit.mode === 'permanent') return Infinity
+  const v = limit.value ?? 0
+  if (limit.mode === 'minutes') return v * MS_MINUTE
+  if (limit.mode === 'hours') return v * MS_HOUR
+  return v * MS_DAY
+}
+
+const MODE_UNIT: Record<LimitMode, string> = { permanent: '', minutes: '分钟', hours: '小时', days: '天' }
 
 export interface Acl {
   // 按用户名的使用时长限制
@@ -107,18 +134,28 @@ export function can(role: Role | undefined, feature: string): boolean {
   return perms ? perms[feature] !== false : true
 }
 
-const MS_HOUR = 3600_000
-const MS_DAY = 86400_000
-
 /** 计算用户使用期限剩余毫秒（permanent 返回 Infinity；未设视为 permanent） */
-export function remainingMs(username: string): number {
+export function remainingMs(username: string, role?: Role): number {
   const acl = useAclStore.getState().acl
-  const limit = acl.userLimits[username]
+  let limit = acl.userLimits[username]
+
+  if (!limit) {
+    let r = role
+    if (!r) {
+      const currentUser = useAuthStore.getState().currentUser
+      if (currentUser && currentUser.username === username) {
+        r = currentUser.role
+      }
+    }
+    if (r) {
+      limit = getDefaultLimit(username, r)
+    }
+  }
+
   if (!limit || limit.mode === 'permanent') return Infinity
   const start = acl.firstLoginAt[username]
   if (!start) return Infinity // 还没开始计时
-  const span = limit.mode === 'hours' ? (limit.value ?? 0) * MS_HOUR : (limit.value ?? 0) * MS_DAY
-  return start ? Date.parse(start) + span - Date.now() : Infinity
+  return Date.parse(start) + spanMs(limit) - Date.now()
 }
 
 /**
@@ -137,16 +174,14 @@ export async function checkAndStampLogin(username: string, role: Role): Promise<
   }
   if (role === 'superadmin') return
 
-  const limit = acl.userLimits[username]
+  const limit = acl.userLimits[username] ?? getDefaultLimit(username, role)
   if (limit && limit.mode !== 'permanent') {
     // 首次登录记录计时起点
     if (!acl.firstLoginAt[username]) {
       await store.save({ ...acl, firstLoginAt: { ...acl.firstLoginAt, [username]: new Date().toISOString() } })
     } else {
-      const span = limit.mode === 'hours' ? (limit.value ?? 0) * MS_HOUR : (limit.value ?? 0) * MS_DAY
-      if (Date.parse(acl.firstLoginAt[username]) + span < Date.now()) {
-        const unit = limit.mode === 'hours' ? '小时' : '天'
-        throw new Error(`使用期限已到（${limit.value}${unit}），请联系超级管理员`)
+      if (Date.parse(acl.firstLoginAt[username]) + spanMs(limit) < Date.now()) {
+        throw new Error(`使用期限已到（${limit.value}${MODE_UNIT[limit.mode]}），请联系海大计算机学院徐老师`)
       }
     }
   }

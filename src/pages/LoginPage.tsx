@@ -142,8 +142,8 @@ export default function LoginPage() {
             </Button>
             <div style={{ fontSize: 12, marginTop: 8, color: '#888', textAlign: 'center' }}>
               演示账号（手动登录可体验不同角色）：
-              {SEED_ACCOUNTS.map((a) => (
-                <div key={a.username}>{a.label}：{a.username} / {a.password}</div>
+              {SEED_ACCOUNTS.filter((a) => a.role !== 'superadmin').map((a) => (
+                <div key={a.username}>{a.label}：{a.username} </div>
               ))}
               <div style={{ marginTop: 4 }}>账号仅存本机，离线可用</div>
             </div>

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Card, Table, Select, Switch, Button, Tag, Typography, Checkbox, App as AntApp, Space } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
-import { listUsers, type StoredUser, type Role } from '@/auth/authStore'
-import { useAclStore, FEATURES, remainingMs, type UserLimit } from '@/auth/acl'
+import { listUsers, type StoredUser, type Role, useAuthStore } from '@/auth/authStore'
+import { useAclStore, FEATURES, remainingMs, getDefaultLimit, type UserLimit } from '@/auth/acl'
 
 const { Title, Text } = Typography
 
@@ -16,9 +16,12 @@ const ROLE_TAG: Record<Role, { color: string; label: string }> = {
 // 时长预设
 const LIMIT_OPTIONS: { value: string; label: string; limit: UserLimit }[] = [
   { value: 'permanent', label: '永久', limit: { mode: 'permanent' } },
+  { value: 'm2', label: '2 分钟', limit: { mode: 'minutes', value: 2 } },
+  { value: 'm3', label: '3 分钟', limit: { mode: 'minutes', value: 3 } },
   { value: 'h1', label: '1 小时', limit: { mode: 'hours', value: 1 } },
   { value: 'h8', label: '8 小时', limit: { mode: 'hours', value: 8 } },
   { value: 'h24', label: '24 小时', limit: { mode: 'hours', value: 24 } },
+  { value: 'd1', label: '1 天', limit: { mode: 'days', value: 1 } },
   { value: 'd3', label: '3 天', limit: { mode: 'days', value: 3 } },
   { value: 'd7', label: '一周（7 天）', limit: { mode: 'days', value: 7 } },
   { value: 'd30', label: '30 天', limit: { mode: 'days', value: 30 } },
@@ -32,10 +35,12 @@ function fmtRemaining(ms: number): string {
   const h = ms / 3600_000
   if (h >= 24) return `剩 ${Math.floor(h / 24)} 天 ${Math.floor(h % 24)} 小时`
   if (h >= 1) return `剩 ${Math.floor(h)} 小时`
-  return `剩 ${Math.ceil(ms / 60_000)} 分钟`
+  if (ms >= 60_000) return `剩 ${Math.floor(ms / 60_000)} 分钟 ${Math.ceil((ms % 60_000) / 1000)} 秒`
+  return `剩 ${Math.ceil(ms / 1000)} 秒`
 }
 
 export default function AdminPanelPage() {
+  const currentUser = useAuthStore((s) => s.currentUser)
   const { message } = AntApp.useApp()
   const { acl, load, setUserLimit, setDisabled, resetClock, setRolePerm } = useAclStore()
   const [users, setUsers] = useState<StoredUser[]>([])
@@ -46,9 +51,19 @@ export default function AdminPanelPage() {
     setUsers((await listUsers()).filter((u) => u.role !== 'superadmin'))
   }
   useEffect(() => {
-    refresh()
+    if (currentUser?.role === 'superadmin') {
+      refresh()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [currentUser])
+
+  if (!currentUser || currentUser.role !== 'superadmin') {
+    return (
+      <Card style={{ margin: 16 }}>
+        <Text type="danger" style={{ fontSize: 16, fontWeight: 'bold' }}>无权访问此页面</Text>
+      </Card>
+    )
+  }
 
   const editableRoles: Role[] = ['admin', 'doctor', 'user']
 
@@ -71,7 +86,7 @@ export default function AdminPanelPage() {
               title: '使用期限', render: (_, u) => (
                 <Select
                   size="small" style={{ width: 140 }}
-                  value={limitToValue(acl.userLimits[u.username])}
+                  value={limitToValue(acl.userLimits[u.username] ?? getDefaultLimit(u.username, u.role))}
                   options={LIMIT_OPTIONS.map((o) => ({ label: o.label, value: o.value }))}
                   onChange={async (v) => {
                     await setUserLimit(u.username, LIMIT_OPTIONS.find((o) => o.value === v)!.limit)
@@ -80,7 +95,21 @@ export default function AdminPanelPage() {
                 />
               ),
             },
-            { title: '剩余', render: (_, u) => <Text type="secondary">{fmtRemaining(remainingMs(u.username))}</Text> },
+            {
+              title: '剩余',
+              render: (_, u) => {
+                const limit = acl.userLimits[u.username] ?? getDefaultLimit(u.username, u.role)
+                if (limit.mode === 'permanent') {
+                  return <Text type="secondary">永久</Text>
+                }
+                const start = acl.firstLoginAt[u.username]
+                if (!start) {
+                  const units: Record<string, string> = { minutes: '分钟', hours: '小时', days: '天' }
+                  return <Text type="warning">未登录（待激活 {limit.value}{units[limit.mode]}）</Text>
+                }
+                return <Text type="secondary">{fmtRemaining(remainingMs(u.username, u.role))}</Text>
+              }
+            },
             {
               title: '启用', render: (_, u) => (
                 <Switch
